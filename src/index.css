@@ -87,7 +87,15 @@ button {
 .brand-lockup {
   display: flex;
   gap: 16px;
+  align-items: flex-start;
+}
+
+.brand-lockup {
   align-items: center;
+}
+
+.auth-card .brand-lockup {
+  gap: 24px;
 }
 
 .sidebar-brand p,
@@ -126,9 +134,10 @@ button {
 }
 
 .auth-brand-mark {
-  width: 92px;
-  height: 92px;
-  border-radius: 24px;
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  flex-shrink: 0;
 }
 
 .brand-mark img {
