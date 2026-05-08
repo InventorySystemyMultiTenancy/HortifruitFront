@@ -197,8 +197,21 @@ export function AppProvider({ children }) {
     await refreshDashboard();
   }
 
-  async function deleteShop(id) {
+  async function deleteShop(id, options = {}) {
     await api.del(`/shops/${id}`);
+    if (options.refresh !== false) {
+      await refreshDashboard();
+    }
+  }
+
+  async function deleteShopPermanent(id) {
+    await api.del(`/shops/${id}/permanent`);
+    await refreshDashboard();
+  }
+
+  async function deactivateAndDeleteShopPermanent(id) {
+    await deleteShop(id, { refresh: false });
+    await api.del(`/shops/${id}/permanent`);
     await refreshDashboard();
   }
 
@@ -210,8 +223,21 @@ export function AppProvider({ children }) {
     await refreshDashboard();
   }
 
-  async function deleteCost(id) {
+  async function deleteCost(id, options = {}) {
     await api.del(`/costs/${id}`);
+    if (options.refresh !== false) {
+      await refreshDashboard();
+    }
+  }
+
+  async function deleteCostPermanent(id) {
+    await api.del(`/costs/${id}/permanent`);
+    await refreshDashboard();
+  }
+
+  async function deactivateAndDeleteCostPermanent(id) {
+    await deleteCost(id, { refresh: false });
+    await api.del(`/costs/${id}/permanent`);
     await refreshDashboard();
   }
 
@@ -220,8 +246,21 @@ export function AppProvider({ children }) {
     await refreshDashboard();
   }
 
-  async function deleteProduct(id) {
+  async function deleteProduct(id, options = {}) {
     await api.del(`/products/${id}`);
+    if (options.refresh !== false) {
+      await refreshDashboard();
+    }
+  }
+
+  async function deleteProductPermanent(id) {
+    await api.del(`/products/${id}/permanent`);
+    await refreshDashboard();
+  }
+
+  async function deactivateAndDeleteProductPermanent(id) {
+    await deleteProduct(id, { refresh: false });
+    await api.del(`/products/${id}/permanent`);
     await refreshDashboard();
   }
 
@@ -233,8 +272,21 @@ export function AppProvider({ children }) {
     await refreshDashboard();
   }
 
-  async function deletePlantation(id) {
+  async function deletePlantation(id, options = {}) {
     await api.del(`/plantations/${id}`);
+    if (options.refresh !== false) {
+      await refreshDashboard();
+    }
+  }
+
+  async function deletePlantationPermanent(id) {
+    await api.del(`/plantations/${id}/permanent`);
+    await refreshDashboard();
+  }
+
+  async function deactivateAndDeletePlantationPermanent(id) {
+    await deletePlantation(id, { refresh: false });
+    await api.del(`/plantations/${id}/permanent`);
     await refreshDashboard();
   }
 
@@ -325,9 +377,17 @@ export function AppProvider({ children }) {
       createPlantation,
       createStockMovement,
       deleteShop,
+      deleteShopPermanent,
+      deactivateAndDeleteShopPermanent,
       deleteCost,
+      deleteCostPermanent,
+      deactivateAndDeleteCostPermanent,
       deleteProduct,
+      deleteProductPermanent,
+      deactivateAndDeleteProductPermanent,
       deletePlantation,
+      deletePlantationPermanent,
+      deactivateAndDeletePlantationPermanent,
       deleteStockMovement,
       saveDailyClose,
     }),

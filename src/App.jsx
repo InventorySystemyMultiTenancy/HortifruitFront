@@ -368,7 +368,13 @@ function DashboardSection() {
 }
 
 function ProductsSection() {
-  const { products, createProduct, deleteProduct, user } = useApp();
+  const {
+    products,
+    createProduct,
+    deleteProduct,
+    deactivateAndDeleteProductPermanent,
+    user,
+  } = useApp();
   const [form, setForm] = useState({
     name: "",
     unit: "KG",
@@ -482,18 +488,47 @@ function ProductsSection() {
               <span>SKU: {product.sku || "-"}</span>
             </div>
             {user?.role === "ADMIN" ? (
-              <button
-                className="action-button secondary danger"
-                type="button"
-                onClick={async () => {
-                  if (window.confirm(`Excluir o produto ${product.name}?`)) {
-                    await deleteProduct(product.id);
-                  }
-                }}
-              >
-                <Trash2 size={16} />
-                Excluir
-              </button>
+              <div className="list-meta">
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      window.confirm(`Desativar o produto ${product.name}?`)
+                    ) {
+                      await deleteProduct(product.id);
+                    }
+                  }}
+                >
+                  Desativar
+                </button>
+                <button
+                  className="action-button secondary danger"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `A exclusão permanente exige desativação prévia. Deseja continuar com ${product.name}?`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      !window.confirm(
+                        `Confirma EXCLUSÃO PERMANENTE do produto ${product.name}? Essa ação não pode ser desfeita.`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    await deactivateAndDeleteProductPermanent(product.id);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Excluir permanente
+                </button>
+              </div>
             ) : null}
           </article>
         ))}
@@ -503,7 +538,13 @@ function ProductsSection() {
 }
 
 function PlantationsSection() {
-  const { plantations, createPlantation, deletePlantation, user } = useApp();
+  const {
+    plantations,
+    createPlantation,
+    deletePlantation,
+    deactivateAndDeletePlantationPermanent,
+    user,
+  } = useApp();
   const [form, setForm] = useState({ name: "", location: "" });
 
   async function handleSubmit(event) {
@@ -575,20 +616,49 @@ function PlantationsSection() {
               </span>
             </div>
             {user?.role === "ADMIN" ? (
-              <button
-                className="action-button secondary danger"
-                type="button"
-                onClick={async () => {
-                  if (
-                    window.confirm(`Excluir a plantação ${plantation.name}?`)
-                  ) {
-                    await deletePlantation(plantation.id);
-                  }
-                }}
-              >
-                <Trash2 size={16} />
-                Excluir
-              </button>
+              <div className="list-meta">
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        `Desativar a plantação ${plantation.name}?`,
+                      )
+                    ) {
+                      await deletePlantation(plantation.id);
+                    }
+                  }}
+                >
+                  Desativar
+                </button>
+                <button
+                  className="action-button secondary danger"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `A exclusão permanente exige desativação prévia. Deseja continuar com ${plantation.name}?`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      !window.confirm(
+                        `Confirma EXCLUSÃO PERMANENTE da plantação ${plantation.name}? Essa ação não pode ser desfeita.`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    await deactivateAndDeletePlantationPermanent(plantation.id);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Excluir permanente
+                </button>
+              </div>
             ) : null}
           </article>
         ))}
@@ -819,7 +889,13 @@ function StockSection() {
 }
 
 function ShopsSection() {
-  const { dashboard, createShop, deleteShop, user } = useApp();
+  const {
+    dashboard,
+    createShop,
+    deleteShop,
+    deactivateAndDeleteShopPermanent,
+    user,
+  } = useApp();
   const [form, setForm] = useState({ name: "", code: "", city: "" });
 
   async function handleSubmit(event) {
@@ -909,18 +985,45 @@ function ShopsSection() {
               <span>Criada em: {formatDateTime(shop.createdAt)}</span>
             </div>
             {user?.role === "ADMIN" ? (
-              <button
-                className="action-button secondary danger"
-                type="button"
-                onClick={async () => {
-                  if (window.confirm(`Excluir a loja ${shop.name}?`)) {
-                    await deleteShop(shop.id);
-                  }
-                }}
-              >
-                <Trash2 size={16} />
-                Excluir
-              </button>
+              <div className="list-meta">
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm(`Desativar a loja ${shop.name}?`)) {
+                      await deleteShop(shop.id);
+                    }
+                  }}
+                >
+                  Desativar
+                </button>
+                <button
+                  className="action-button secondary danger"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `A exclusão permanente exige desativação prévia. Deseja continuar com ${shop.name}?`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      !window.confirm(
+                        `Confirma EXCLUSÃO PERMANENTE da loja ${shop.name}? Essa ação não pode ser desfeita.`,
+                      )
+                    ) {
+                      return;
+                    }
+
+                    await deactivateAndDeleteShopPermanent(shop.id);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Excluir permanente
+                </button>
+              </div>
             ) : null}
           </motion.article>
         ))}
@@ -930,7 +1033,12 @@ function ShopsSection() {
 }
 
 function FinancialSection() {
-  const { dashboard, createCost, deleteCost } = useApp();
+  const {
+    dashboard,
+    createCost,
+    deleteCost,
+    deactivateAndDeleteCostPermanent,
+  } = useApp();
   const [form, setForm] = useState({
     name: "",
     nature: "FIXED",
@@ -1078,18 +1186,45 @@ function FinancialSection() {
                   : "Sem vencimento"}
               </span>
             </div>
-            <button
-              className="action-button secondary danger"
-              type="button"
-              onClick={async () => {
-                if (window.confirm(`Excluir o custo ${cost.name}?`)) {
-                  await deleteCost(cost.id);
-                }
-              }}
-            >
-              <Trash2 size={16} />
-              Excluir
-            </button>
+            <div className="list-meta">
+              <button
+                className="action-button secondary"
+                type="button"
+                onClick={async () => {
+                  if (window.confirm(`Desativar o custo ${cost.name}?`)) {
+                    await deleteCost(cost.id);
+                  }
+                }}
+              >
+                Desativar
+              </button>
+              <button
+                className="action-button secondary danger"
+                type="button"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      `A exclusão permanente exige desativação prévia. Deseja continuar com ${cost.name}?`,
+                    )
+                  ) {
+                    return;
+                  }
+
+                  if (
+                    !window.confirm(
+                      `Confirma EXCLUSÃO PERMANENTE do custo ${cost.name}? Essa ação não pode ser desfeita.`,
+                    )
+                  ) {
+                    return;
+                  }
+
+                  await deactivateAndDeleteCostPermanent(cost.id);
+                }}
+              >
+                <Trash2 size={16} />
+                Excluir permanente
+              </button>
+            </div>
           </article>
         ))}
       </div>
