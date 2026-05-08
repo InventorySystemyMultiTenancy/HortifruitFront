@@ -59,7 +59,7 @@ function AuthScreen() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="brand-lockup">
-          <div className="brand-mark">
+          <div className="brand-mark auth-brand-mark">
             <img src="/image.png" alt="Logo Hortifruit" />
           </div>
           <div>
@@ -111,12 +111,6 @@ function AuthScreen() {
             Entrar no sistema
           </button>
         </form>
-
-        <div className="auth-footnote">
-          <span>
-            Paleta: Verde Escuro #1B4332, Laranja #FFB703 e cinzas claros.
-          </span>
-        </div>
       </motion.section>
     </div>
   );
