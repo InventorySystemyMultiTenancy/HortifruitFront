@@ -1,0 +1,279 @@
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertTriangle,
+  Calculator,
+  CheckCircle2,
+  Save,
+  Store,
+} from "lucide-react";
+import { formatCurrency, formatDate, toInputDate } from "../lib/date.js";
+import { useApp } from "../context/AppContext.jsx";
+
+const fields = [
+  {
+    key: "openingAmount",
+    label: "Abertura",
+    hint: "Valor no caixa ao iniciar o dia",
+  },
+  {
+    key: "replenishment",
+    label: "Reposição",
+    hint: "Entrada por reposição da loja",
+  },
+  { key: "losses", label: "Perdas", hint: "Quebras, avarias e descartes" },
+  { key: "sales", label: "Venda", hint: "Total vendido no PDV" },
+];
+
+const emptyRow = {
+  openingAmount: "",
+  replenishment: "",
+  losses: "",
+  sales: "",
+  finalBalance: "",
+  notes: "",
+};
+
+export default function DailyCloseForm({ shops = [] }) {
+  const { user, saveDailyClose, loading } = useApp();
+  const [shopId, setShopId] = useState(user?.shopId || shops[0]?.id || "");
+  const [closeDate, setCloseDate] = useState(toInputDate(new Date()));
+  const [form, setForm] = useState(emptyRow);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user?.role !== "ADMIN" && user?.shopId) {
+      setShopId(user.shopId);
+    }
+  }, [user]);
+
+  const computedBalance = useMemo(() => {
+    const opening = Number(form.openingAmount || 0);
+    const replenishment = Number(form.replenishment || 0);
+    const losses = Number(form.losses || 0);
+    const sales = Number(form.sales || 0);
+    return opening + replenishment - losses - sales;
+  }, [form]);
+
+  const manualBalance =
+    form.finalBalance === "" ? null : Number(form.finalBalance);
+  const balanceMatches =
+    manualBalance === null || Number.isNaN(manualBalance)
+      ? true
+      : Number(manualBalance.toFixed(2)) === Number(computedBalance.toFixed(2));
+  const finalBalance = manualBalance === null ? computedBalance : manualBalance;
+
+  function updateField(key, value) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setStatusMessage("");
+
+    if (!shopId) {
+      setError("Selecione uma loja para registrar o fechamento");
+      return;
+    }
+
+    if (!balanceMatches) {
+      setError("O saldo final informado não bate com a fórmula do fechamento");
+      return;
+    }
+
+    try {
+      await saveDailyClose({
+        shopId,
+        closeDate,
+        openingAmount: Number(form.openingAmount || 0),
+        replenishment: Number(form.replenishment || 0),
+        losses: Number(form.losses || 0),
+        sales: Number(form.sales || 0),
+        finalBalance: manualBalance === null ? undefined : manualBalance,
+        notes: form.notes,
+      });
+
+      setForm(emptyRow);
+      setStatusMessage("Fechamento confirmado com sucesso");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  return (
+    <motion.section
+      className="card form-card"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+    >
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Fechamento Diário</span>
+          <h2>Entrada rápida do PDV</h2>
+          <p>
+            Preencha apenas os campos necessários. O sistema calcula o saldo
+            final automaticamente se ele ficar em branco.
+          </p>
+        </div>
+        <div className="pill success">
+          <CheckCircle2 size={16} />
+          <span>{formatDate(closeDate)}</span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="daily-close-form">
+        <div className="form-grid two-columns">
+          <label className="field">
+            <span>Loja</span>
+            <div className="input-with-icon">
+              <Store size={16} />
+              <select
+                value={shopId}
+                onChange={(event) => setShopId(event.target.value)}
+                disabled={user?.role !== "ADMIN"}
+              >
+                <option value="">Selecione</option>
+                {shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
+
+          <label className="field">
+            <span>Data de fechamento</span>
+            <input
+              type="date"
+              value={closeDate}
+              onChange={(event) => setCloseDate(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="spreadsheet-card">
+          <div className="spreadsheet-header">
+            <div>
+              <strong>Resumo do caixa</strong>
+              <p>Layout pensado para operação rápida no balcão.</p>
+            </div>
+            <div className={`pill ${balanceMatches ? "success" : "warning"}`}>
+              <Calculator size={16} />
+              <span>{formatCurrency(finalBalance)}</span>
+            </div>
+          </div>
+
+          <div className="spreadsheet-table">
+            {fields.map((field) => (
+              <div className="spreadsheet-row" key={field.key}>
+                <div>
+                  <strong>{field.label}</strong>
+                  <small>{field.hint}</small>
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form[field.key]}
+                  onChange={(event) =>
+                    updateField(field.key, event.target.value)
+                  }
+                  placeholder="0,00"
+                />
+              </div>
+            ))}
+
+            <div className="spreadsheet-row highlight">
+              <div>
+                <strong>Saldo Final</strong>
+                <small>
+                  Se preencher manualmente, o sistema valida se bate com a
+                  fórmula.
+                </small>
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                value={form.finalBalance}
+                onChange={(event) =>
+                  updateField("finalBalance", event.target.value)
+                }
+                placeholder={computedBalance.toFixed(2)}
+              />
+            </div>
+          </div>
+
+          <label className="field notes-field">
+            <span>Observações</span>
+            <textarea
+              rows="3"
+              value={form.notes}
+              onChange={(event) => updateField("notes", event.target.value)}
+              placeholder="Avarias, divergências, reforço de caixa, observações do turno"
+            />
+          </label>
+        </div>
+
+        <div className="summary-grid">
+          <div className="summary-box">
+            <span>Saldo calculado</span>
+            <strong>{formatCurrency(computedBalance)}</strong>
+          </div>
+          <div className="summary-box">
+            <span>Saldo informado</span>
+            <strong>
+              {manualBalance === null
+                ? "Automático"
+                : formatCurrency(manualBalance)}
+            </strong>
+          </div>
+          <div
+            className={`summary-box ${balanceMatches ? "positive" : "negative"}`}
+          >
+            <span>Validação</span>
+            <strong>{balanceMatches ? "OK" : "Inconsistente"}</strong>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {error ? (
+            <motion.div
+              className="feedback error"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <AlertTriangle size={16} />
+              <span>{error}</span>
+            </motion.div>
+          ) : null}
+
+          {statusMessage ? (
+            <motion.div
+              className="feedback success"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <CheckCircle2 size={16} />
+              <span>{statusMessage}</span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <button
+          className="action-button primary"
+          type="submit"
+          disabled={loading || !balanceMatches}
+        >
+          <Save size={16} />
+          Confirmar Fechamento
+        </button>
+      </form>
+    </motion.section>
+  );
+}
