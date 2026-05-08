@@ -591,6 +591,35 @@ h3 {
 
 .auth-button {
   margin-top: 8px;
+  .tabs {
+    display: flex;
+    gap: 12px;
+    border-bottom: 1px solid rgba(27, 67, 50, 0.12);
+    padding: 0 0 16px 0;
+  }
+
+  .tab-button {
+    padding: 12px 18px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 160ms ease;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .tab-button:hover {
+    color: var(--green);
+  }
+
+  .tab-button.active {
+    color: var(--green);
+    border-bottom-color: var(--orange);
+  }
 }
 
 .global-loading,
