@@ -60,7 +60,7 @@ function AuthScreen() {
       >
         <div className="brand-lockup">
           <div className="brand-mark">
-            <span>HF</span>
+            <img src="/image.png" alt="Logo Hortifruit" />
           </div>
           <div>
             <span className="eyebrow">Hortifruit InfraSyncTech</span>
@@ -129,7 +129,7 @@ function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-mark compact">
-          <span>HF</span>
+          <img src="/image.png" alt="Logo Hortifruit" />
         </div>
         <div>
           <strong>Hortifruit</strong>
