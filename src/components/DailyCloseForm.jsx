@@ -167,7 +167,7 @@ export default function DailyCloseForm({
     const replenishment = Number(form.replenishment || 0);
     const losses = Number(form.losses || 0);
     const sales = Number(form.sales || 0);
-    return opening + replenishment - losses - sales;
+    return opening + replenishment + sales - losses;
   }, [form]);
 
   const manualBalance =
@@ -378,10 +378,7 @@ export default function DailyCloseForm({
             <div className="spreadsheet-row highlight">
               <div>
                 <strong>Saldo Final</strong>
-                <small>
-                  Se preencher manualmente, o sistema valida se bate com a
-                  fórmula.
-                </small>
+                <small>Fórmula: abertura + reposição + venda - perdas.</small>
               </div>
               <input
                 type="number"
