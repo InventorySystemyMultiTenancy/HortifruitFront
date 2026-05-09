@@ -1264,6 +1264,15 @@ function DailyCloseSection() {
   const { dashboard, user } = useApp();
   const [editingClose, setEditingClose] = useState(null);
 
+  function resolveProductName(productId) {
+    const product = dashboard.products.find((item) => item.id === productId);
+    return product?.name || `Produto ${productId}`;
+  }
+
+  function formatQty(value) {
+    return Number(value || 0).toFixed(3);
+  }
+
   function parseAuditTrail(rawNotes) {
     if (!rawNotes) {
       return { userNotes: "", auditTrail: [] };
@@ -1349,12 +1358,47 @@ function DailyCloseSection() {
                       .slice()
                       .reverse()
                       .map((entry, index) => (
-                        <div key={`${entry.at}-${index}`} className="list-meta">
-                          <span>
-                            {formatDateTime(entry.at)} - {entry.type} -{" "}
-                            {entry.actor?.name || "Usuário"}
-                          </span>
-                          <span>Alterações: {entry.changes?.length || 0}</span>
+                        <div key={`${entry.at}-${index}`} className="stack">
+                          <div className="list-meta">
+                            <span>
+                              {formatDateTime(entry.at)} - {entry.type} -{" "}
+                              {entry.actor?.name || "Usuário"}
+                            </span>
+                            <span>
+                              Alterações: {entry.changes?.length || 0}
+                            </span>
+                          </div>
+
+                          {entry.changes?.length ? (
+                            <div className="stack">
+                              {entry.changes.map((change) => (
+                                <div
+                                  key={`${entry.at}-${change.productId}`}
+                                  className="list-meta"
+                                >
+                                  <span>
+                                    {resolveProductName(change.productId)}
+                                  </span>
+                                  <span>
+                                    Vendido{" "}
+                                    {formatQty(change.before?.soldQuantity)}{" "}
+                                    -&gt;{" "}
+                                    {formatQty(change.after?.soldQuantity)} |
+                                    Perda{" "}
+                                    {formatQty(change.before?.lossQuantity)}{" "}
+                                    -&gt;{" "}
+                                    {formatQty(change.after?.lossQuantity)} |
+                                    Restante{" "}
+                                    {formatQty(
+                                      change.before?.remainingQuantity,
+                                    )}{" "}
+                                    -&gt;{" "}
+                                    {formatQty(change.after?.remainingQuantity)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                   </div>
