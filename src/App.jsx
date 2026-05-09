@@ -1264,6 +1264,32 @@ function DailyCloseSection() {
   const { dashboard, user } = useApp();
   const [editingClose, setEditingClose] = useState(null);
 
+  function parseAuditTrail(rawNotes) {
+    if (!rawNotes) {
+      return { userNotes: "", auditTrail: [] };
+    }
+
+    const marker = "[AUDIT_TRAIL_JSON]";
+    const markerIndex = rawNotes.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return { userNotes: rawNotes, auditTrail: [] };
+    }
+
+    const userNotes = rawNotes.slice(0, markerIndex).trimEnd();
+    const jsonChunk = rawNotes.slice(markerIndex + marker.length).trim();
+
+    try {
+      const parsed = JSON.parse(jsonChunk);
+      return {
+        userNotes,
+        auditTrail: Array.isArray(parsed) ? parsed : [],
+      };
+    } catch {
+      return { userNotes, auditTrail: [] };
+    }
+  }
+
   return (
     <div className="stack">
       {user?.role === "WORKER" ? (
@@ -1278,31 +1304,77 @@ function DailyCloseSection() {
       ) : null}
 
       <div className="grid cards-grid">
-        {dashboard.closes.map((close) => (
-          <article className="card list-card" key={close.id}>
-            <div className="list-card-head">
-              <div>
-                <strong>{close.shop?.name || "Loja"}</strong>
-                <p>{formatDateTime(close.closeDate)}</p>
+        {dashboard.closes.map((close) => {
+          const { userNotes, auditTrail } = parseAuditTrail(close.notes);
+          const lastAudit = auditTrail[auditTrail.length - 1];
+
+          return (
+            <article className="card list-card" key={close.id}>
+              <div className="list-card-head">
+                <div>
+                  <strong>{close.shop?.name || "Loja"}</strong>
+                  <p>{formatDateTime(close.closeDate)}</p>
+                </div>
+                <span className="pill success">{close.status}</span>
               </div>
-              <span className="pill success">{close.status}</span>
-            </div>
-            <div className="list-meta">
-              <span>Vendas: {formatCurrency(close.sales)}</span>
-              <span>Perdas: {formatCurrency(close.losses)}</span>
-            </div>
-            <div className="list-meta">
-              <span>Saldo final: {formatCurrency(close.finalBalance)}</span>
-            </div>
-            <button
-              className="action-button secondary"
-              type="button"
-              onClick={() => setEditingClose(close)}
-            >
-              Editar fechamento
-            </button>
-          </article>
-        ))}
+              <div className="list-meta">
+                <span>Vendas: {formatCurrency(close.sales)}</span>
+                <span>Perdas: {formatCurrency(close.losses)}</span>
+              </div>
+              <div className="list-meta">
+                <span>Saldo final: {formatCurrency(close.finalBalance)}</span>
+              </div>
+              {userNotes ? (
+                <div className="list-meta">
+                  <span>Obs: {userNotes}</span>
+                </div>
+              ) : null}
+
+              {lastAudit ? (
+                <div className="list-meta">
+                  <span>
+                    Última edição: {formatDateTime(lastAudit.at)} por{" "}
+                    {lastAudit.actor?.name || "Usuário"}
+                  </span>
+                </div>
+              ) : null}
+
+              {auditTrail.length ? (
+                <details>
+                  <summary>
+                    Histórico de auditoria ({auditTrail.length})
+                  </summary>
+                  <div className="stack">
+                    {auditTrail
+                      .slice()
+                      .reverse()
+                      .map((entry, index) => (
+                        <div key={`${entry.at}-${index}`} className="list-meta">
+                          <span>
+                            {formatDateTime(entry.at)} - {entry.type} -{" "}
+                            {entry.actor?.name || "Usuário"}
+                          </span>
+                          <span>Alterações: {entry.changes?.length || 0}</span>
+                        </div>
+                      ))}
+                  </div>
+                </details>
+              ) : null}
+              <button
+                className="action-button secondary"
+                type="button"
+                onClick={() =>
+                  setEditingClose({
+                    ...close,
+                    notes: userNotes,
+                  })
+                }
+              >
+                Editar fechamento
+              </button>
+            </article>
+          );
+        })}
       </div>
 
       <DailyCloseForm

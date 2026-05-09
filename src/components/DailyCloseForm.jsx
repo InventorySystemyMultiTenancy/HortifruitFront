@@ -11,6 +11,15 @@ import { formatCurrency, formatDate, toInputDate } from "../lib/date.js";
 import { useApp } from "../context/AppContext.jsx";
 import { api } from "../lib/api.js";
 
+const AUDIT_MARKER = "[AUDIT_TRAIL_JSON]";
+
+function extractUserNotes(rawNotes) {
+  if (!rawNotes) return "";
+  const markerIndex = rawNotes.indexOf(AUDIT_MARKER);
+  if (markerIndex === -1) return rawNotes;
+  return rawNotes.slice(0, markerIndex).trimEnd();
+}
+
 const fields = [
   {
     key: "openingAmount",
@@ -76,7 +85,7 @@ export default function DailyCloseForm({
       losses: String(initialClose.losses ?? ""),
       sales: String(initialClose.sales ?? ""),
       finalBalance: String(initialClose.finalBalance ?? ""),
-      notes: initialClose.notes || "",
+      notes: extractUserNotes(initialClose.notes),
     });
   }, [initialClose, user]);
 
