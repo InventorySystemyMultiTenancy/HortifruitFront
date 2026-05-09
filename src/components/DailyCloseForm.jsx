@@ -25,14 +25,26 @@ const fields = [
     key: "openingAmount",
     label: "Abertura",
     hint: "Valor no caixa ao iniciar o dia",
+    placeholder: "Ex: 150.00",
   },
   {
     key: "replenishment",
     label: "Reposição",
     hint: "Entrada por reposição da loja",
+    placeholder: "Ex: 50.00",
   },
-  { key: "losses", label: "Perdas", hint: "Quebras, avarias e descartes" },
-  { key: "sales", label: "Venda", hint: "Total vendido no PDV" },
+  {
+    key: "losses",
+    label: "Perdas",
+    hint: "Valor perdido no dia (quebras, avarias e descartes)",
+    placeholder: "Ex: 20.00",
+  },
+  {
+    key: "sales",
+    label: "Venda",
+    hint: "Total vendido no PDV (entrada de caixa)",
+    placeholder: "Ex: 100.00",
+  },
 ];
 
 const emptyRow = {
@@ -313,6 +325,15 @@ export default function DailyCloseForm({
       </div>
 
       <form onSubmit={handleSubmit} className="daily-close-form">
+        <div className="daily-guide">
+          <strong>Como preencher</strong>
+          <p>
+            1) Preencha os valores do caixa. 2) Informe vendido/perda por
+            produto. 3) Deixe "Saldo Final" e "Restante" em branco se quiser
+            cálculo automático.
+          </p>
+        </div>
+
         <div className="form-grid two-columns">
           <label className="field">
             <span>Loja</span>
@@ -370,7 +391,7 @@ export default function DailyCloseForm({
                   onChange={(event) =>
                     updateField(field.key, event.target.value)
                   }
-                  placeholder="0,00"
+                  placeholder={field.placeholder}
                 />
               </div>
             ))}
@@ -378,7 +399,10 @@ export default function DailyCloseForm({
             <div className="spreadsheet-row highlight">
               <div>
                 <strong>Saldo Final</strong>
-                <small>Fórmula: abertura + reposição + venda - perdas.</small>
+                <small>
+                  Fórmula: abertura + reposição + venda - perdas. Pode deixar em
+                  branco para cálculo automático.
+                </small>
               </div>
               <input
                 type="number"
@@ -422,9 +446,9 @@ export default function DailyCloseForm({
             <div className="product-close-grid">
               <div className="product-close-head">Produto</div>
               <div className="product-close-head">Disponível</div>
-              <div className="product-close-head">Vendido</div>
-              <div className="product-close-head">Perda</div>
-              <div className="product-close-head">Restante</div>
+              <div className="product-close-head">Vendido (qtd)</div>
+              <div className="product-close-head">Perda (qtd)</div>
+              <div className="product-close-head">Restante (auto)</div>
 
               {productEntries.map((entry) => {
                 const product = products.find(
