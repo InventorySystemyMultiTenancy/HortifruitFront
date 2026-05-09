@@ -43,6 +43,14 @@ const sidebarItems = [
   { key: "reports", label: "Relatórios", icon: BarChart3 },
 ];
 
+function formatQuantity(value) {
+  const numeric = Number(value || 0);
+  return numeric.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+}
+
 function AuthScreen() {
   const { login, loading, error } = useApp();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -876,7 +884,7 @@ function StockSection() {
                     <p>{movement.shop?.name || "Sem loja"}</p>
                   </div>
                   <span className="pill success">
-                    {Number(movement.quantity).toFixed(3)}
+                    {formatQuantity(movement.quantity)}
                   </span>
                 </div>
                 <div className="list-meta">
@@ -1270,7 +1278,7 @@ function DailyCloseSection() {
   }
 
   function formatQty(value) {
-    return Number(value || 0).toFixed(3);
+    return formatQuantity(value);
   }
 
   function parseAuditTrail(rawNotes) {
