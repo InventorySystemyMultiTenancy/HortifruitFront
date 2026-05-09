@@ -20,6 +20,14 @@ function extractUserNotes(rawNotes) {
   return rawNotes.slice(0, markerIndex).trimEnd();
 }
 
+function formatQuantity(value) {
+  const numeric = Number(value || 0);
+  return numeric.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+}
+
 const fields = [
   {
     key: "openingAmount",
@@ -273,7 +281,7 @@ export default function DailyCloseForm({
     if (productStockIssues.length) {
       const firstIssue = productStockIssues[0];
       setError(
-        `Estoque insuficiente em ${firstIssue.productName}. Disponível: ${firstIssue.available.toFixed(3)} | Saída informada: ${firstIssue.totalOut.toFixed(3)}`,
+        `Estoque insuficiente em ${firstIssue.productName}. Disponível: ${formatQuantity(firstIssue.available)} | Saída informada: ${formatQuantity(firstIssue.totalOut)}`,
       );
       return;
     }
@@ -498,7 +506,7 @@ export default function DailyCloseForm({
                 const safeRemaining = Math.max(0, computedRemaining);
                 const remainingValue =
                   entry.remainingQuantity === ""
-                    ? safeRemaining.toFixed(3)
+                    ? formatQuantity(safeRemaining)
                     : entry.remainingQuantity;
 
                 return (
@@ -507,14 +515,14 @@ export default function DailyCloseForm({
                       <strong>{product?.name || "Produto"}</strong>
                     </div>
                     <div className="product-close-cell">
-                      {available.toFixed(3)} {product?.unit || ""}
+                      {formatQuantity(available)} {product?.unit || ""}
                     </div>
                     <div className="product-close-cell">
                       <input
                         type="number"
                         step="0.001"
                         min="0"
-                        max={available.toFixed(3)}
+                        max={available}
                         value={entry.soldQuantity}
                         onChange={(event) =>
                           updateProductEntry(
@@ -531,7 +539,7 @@ export default function DailyCloseForm({
                         type="number"
                         step="0.001"
                         min="0"
-                        max={available.toFixed(3)}
+                        max={available}
                         value={entry.lossQuantity}
                         onChange={(event) =>
                           updateProductEntry(
