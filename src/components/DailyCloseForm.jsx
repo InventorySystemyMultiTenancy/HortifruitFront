@@ -28,6 +28,18 @@ function formatQuantity(value) {
   });
 }
 
+function normalizeDecimalInput(value) {
+  if (value == null) return "";
+  return String(value).replace(",", ".");
+}
+
+function parseDecimal(value) {
+  const normalized = normalizeDecimalInput(value);
+  if (normalized === "") return 0;
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 const fields = [
   {
     key: "openingAmount",
@@ -183,15 +195,15 @@ export default function DailyCloseForm({
   }, [initialClose, isEditMode, stockRows]);
 
   const computedBalance = useMemo(() => {
-    const opening = Number(form.openingAmount || 0);
-    const replenishment = Number(form.replenishment || 0);
-    const losses = Number(form.losses || 0);
-    const sales = Number(form.sales || 0);
+    const opening = parseDecimal(form.openingAmount);
+    const replenishment = parseDecimal(form.replenishment);
+    const losses = parseDecimal(form.losses);
+    const sales = parseDecimal(form.sales);
     return opening + replenishment + sales - losses;
   }, [form]);
 
   const manualBalance =
-    form.finalBalance === "" ? null : Number(form.finalBalance);
+    form.finalBalance === "" ? null : parseDecimal(form.finalBalance);
   const balanceMatches =
     manualBalance === null || Number.isNaN(manualBalance)
       ? true
@@ -205,8 +217,8 @@ export default function DailyCloseForm({
         const available =
           stockForProduct(entry.productId) +
           previousOutForProduct(entry.productId);
-        const sold = Number(entry.soldQuantity || 0);
-        const loss = Number(entry.lossQuantity || 0);
+        const sold = parseDecimal(entry.soldQuantity);
+        const loss = parseDecimal(entry.lossQuantity);
         const totalOut = sold + loss;
 
         if (totalOut <= available) {
@@ -224,13 +236,18 @@ export default function DailyCloseForm({
   }, [productEntries, products, isEditMode, initialClose, stockRows]);
 
   function updateField(key, value) {
-    setForm((current) => ({ ...current, [key]: value }));
+    const normalizedValue =
+      key === "notes" ? value : normalizeDecimalInput(value);
+    setForm((current) => ({ ...current, [key]: normalizedValue }));
   }
 
   function updateProductEntry(productId, key, value) {
+    const normalizedValue = normalizeDecimalInput(value);
     setProductEntries((current) =>
       current.map((entry) =>
-        entry.productId === productId ? { ...entry, [key]: value } : entry,
+        entry.productId === productId
+          ? { ...entry, [key]: normalizedValue }
+          : entry,
       ),
     );
   }
@@ -258,8 +275,8 @@ export default function DailyCloseForm({
   function autoRemaining(entry) {
     const available =
       stockForProduct(entry.productId) + previousOutForProduct(entry.productId);
-    const sold = Number(entry.soldQuantity || 0);
-    const loss = Number(entry.lossQuantity || 0);
+    const sold = parseDecimal(entry.soldQuantity);
+    const loss = parseDecimal(entry.lossQuantity);
     return available - sold - loss;
   }
 
@@ -288,12 +305,12 @@ export default function DailyCloseForm({
 
     const normalizedEntries = productEntries
       .map((entry) => {
-        const soldQuantity = Number(entry.soldQuantity || 0);
-        const lossQuantity = Number(entry.lossQuantity || 0);
+        const soldQuantity = parseDecimal(entry.soldQuantity);
+        const lossQuantity = parseDecimal(entry.lossQuantity);
         const remainingQuantity =
           entry.remainingQuantity === "" || entry.remainingQuantity == null
             ? null
-            : Number(entry.remainingQuantity);
+            : parseDecimal(entry.remainingQuantity);
 
         return {
           productId: entry.productId,
@@ -314,10 +331,10 @@ export default function DailyCloseForm({
         id: initialClose?.id,
         shopId,
         closeDate,
-        openingAmount: Number(form.openingAmount || 0),
-        replenishment: Number(form.replenishment || 0),
-        losses: Number(form.losses || 0),
-        sales: Number(form.sales || 0),
+        openingAmount: parseDecimal(form.openingAmount),
+        replenishment: parseDecimal(form.replenishment),
+        losses: parseDecimal(form.losses),
+        sales: parseDecimal(form.sales),
         finalBalance: manualBalance === null ? undefined : manualBalance,
         notes: form.notes,
         productEntries: normalizedEntries,
@@ -498,8 +515,8 @@ export default function DailyCloseForm({
                 const available =
                   stockForProduct(entry.productId) +
                   previousOutForProduct(entry.productId);
-                const sold = Number(entry.soldQuantity || 0);
-                const loss = Number(entry.lossQuantity || 0);
+                const sold = parseDecimal(entry.soldQuantity);
+                const loss = parseDecimal(entry.lossQuantity);
                 const totalOut = sold + loss;
                 const hasStockIssue = totalOut > available;
                 const computedRemaining = autoRemaining(entry);
