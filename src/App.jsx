@@ -5,11 +5,13 @@ import {
   BarChart3,
   Boxes,
   Building2,
+  Download,
   LayoutDashboard,
   Leaf,
   LogOut,
   Menu,
   PlusCircle,
+  Printer,
   ScanBarcode,
   Store,
   Truck,
@@ -1307,6 +1309,111 @@ function DailyCloseSection() {
     }
   }
 
+  function exportCloseCsv(close) {
+    const { userNotes } = parseAuditTrail(close.notes);
+    const rows = [
+      ["Loja", close.shop?.name || ""],
+      ["Data", formatDateTime(close.closeDate)],
+      ["Status", close.status || ""],
+      ["Abertura", close.openingAmount ?? 0],
+      ["Reposicao", close.replenishment ?? 0],
+      ["Vendas", close.sales ?? 0],
+      ["Perdas", close.losses ?? 0],
+      ["Saldo Final", close.finalBalance ?? 0],
+      ["Observacoes", userNotes || ""],
+      [],
+      ["Produto", "Tipo", "Quantidade"],
+      ...(close.items || []).map((item) => [
+        resolveProductName(item.productId),
+        item.kind,
+        formatQuantity(item.quantity),
+      ]),
+    ];
+
+    const csvContent = rows
+      .map((row) =>
+        row
+          .map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`)
+          .join(";"),
+      )
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `fechamento-${close.shop?.name || "loja"}-${close.id}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function printClose(close) {
+    const { userNotes } = parseAuditTrail(close.notes);
+    const itemsRows = (close.items || [])
+      .map(
+        (item) => `
+          <tr>
+            <td>${resolveProductName(item.productId)}</td>
+            <td>${item.kind}</td>
+            <td>${formatQuantity(item.quantity)}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Fechamento ${close.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #10261d; }
+            h1 { margin: 0 0 12px 0; }
+            .meta { margin-bottom: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #d6dfd9; padding: 8px; text-align: left; }
+            th { background: #f0f5f1; }
+          </style>
+        </head>
+        <body>
+          <h1>Fechamento Diário</h1>
+          <div class="meta"><strong>Loja:</strong> ${close.shop?.name || "-"}</div>
+          <div class="meta"><strong>Data:</strong> ${formatDateTime(close.closeDate)}</div>
+          <div class="meta"><strong>Status:</strong> ${close.status || "-"}</div>
+          <div class="meta"><strong>Abertura:</strong> ${formatCurrency(close.openingAmount || 0)}</div>
+          <div class="meta"><strong>Reposição:</strong> ${formatCurrency(close.replenishment || 0)}</div>
+          <div class="meta"><strong>Vendas:</strong> ${formatCurrency(close.sales || 0)}</div>
+          <div class="meta"><strong>Perdas:</strong> ${formatCurrency(close.losses || 0)}</div>
+          <div class="meta"><strong>Saldo Final:</strong> ${formatCurrency(close.finalBalance || 0)}</div>
+          <div class="meta"><strong>Observações:</strong> ${userNotes || "-"}</div>
+
+          <h2>Movimentações por produto</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Tipo</th>
+                <th>Quantidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsRows || '<tr><td colspan="3">Sem itens lançados</td></tr>'}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
   return (
     <div className="stack">
       {user?.role === "WORKER" ? (
@@ -1424,6 +1531,24 @@ function DailyCloseSection() {
               >
                 Editar fechamento
               </button>
+              <div className="list-meta">
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={() => exportCloseCsv(close)}
+                >
+                  <Download size={16} />
+                  Exportar CSV
+                </button>
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={() => printClose(close)}
+                >
+                  <Printer size={16} />
+                  Imprimir / PDF
+                </button>
+              </div>
             </article>
           );
         })}

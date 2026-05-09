@@ -230,10 +230,58 @@ export default function DailyCloseForm({
           productName: product?.name || "Produto",
           available,
           totalOut,
+          overflow: totalOut - available,
         };
       })
       .filter(Boolean);
   }, [productEntries, products, isEditMode, initialClose, stockRows]);
+
+  const reviewSummary = useMemo(() => {
+    let soldTotal = 0;
+    let lossTotal = 0;
+    let remainingTotal = 0;
+    let touchedProducts = 0;
+
+    for (const entry of productEntries) {
+      const sold = parseDecimal(entry.soldQuantity);
+      const loss = parseDecimal(entry.lossQuantity);
+      const manualRemaining =
+        entry.remainingQuantity === "" || entry.remainingQuantity == null
+          ? null
+          : parseDecimal(entry.remainingQuantity);
+      const resolvedRemaining =
+        manualRemaining == null ? autoRemaining(entry) : manualRemaining;
+
+      if (sold > 0 || loss > 0 || manualRemaining != null) {
+        touchedProducts += 1;
+      }
+
+      soldTotal += sold;
+      lossTotal += loss;
+      remainingTotal += Math.max(0, resolvedRemaining);
+    }
+
+    return {
+      soldTotal,
+      lossTotal,
+      remainingTotal,
+      touchedProducts,
+      balanceDelta:
+        manualBalance === null
+          ? 0
+          : Number((manualBalance - computedBalance).toFixed(2)),
+    };
+  }, [
+    productEntries,
+    stockRows,
+    initialClose,
+    isEditMode,
+    manualBalance,
+    computedBalance,
+  ]);
+
+  const firstStockIssue = productStockIssues[0] || null;
+  const hasRealtimeWarnings = !balanceMatches || productStockIssues.length > 0;
 
   function updateField(key, value) {
     const normalizedValue =
@@ -617,7 +665,63 @@ export default function DailyCloseForm({
           </div>
         </div>
 
+        <div className="close-checklist">
+          <div className="close-checklist-head">
+            <div>
+              <strong>Conferência antes de confirmar</strong>
+              <p>Resumo rápido para validar o fechamento do turno.</p>
+            </div>
+            <span
+              className={`pill ${hasRealtimeWarnings ? "warning" : "success"}`}
+            >
+              {hasRealtimeWarnings
+                ? "Atenção necessária"
+                : "Pronto para salvar"}
+            </span>
+          </div>
+          <div className="close-checklist-grid">
+            <div className="summary-box">
+              <span>Total vendido (qtd)</span>
+              <strong>{formatQuantity(reviewSummary.soldTotal)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Total perdido (qtd)</span>
+              <strong>{formatQuantity(reviewSummary.lossTotal)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Restante estimado (qtd)</span>
+              <strong>{formatQuantity(reviewSummary.remainingTotal)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Produtos lançados</span>
+              <strong>{reviewSummary.touchedProducts}</strong>
+            </div>
+            <div
+              className={`summary-box ${balanceMatches ? "positive" : "negative"}`}
+            >
+              <span>Diferença no saldo</span>
+              <strong>{formatCurrency(reviewSummary.balanceDelta)}</strong>
+            </div>
+          </div>
+        </div>
+
         <AnimatePresence>
+          {hasRealtimeWarnings ? (
+            <motion.div
+              className="feedback warning"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <AlertTriangle size={16} />
+              <span>
+                {!balanceMatches
+                  ? "Saldo informado diferente do saldo calculado. Ajuste ou deixe o campo em branco para cálculo automático."
+                  : `Saída acima do estoque em ${firstStockIssue?.productName}. Sugestão: reduzir ${formatQuantity(firstStockIssue?.overflow || 0)} na saída.`}
+              </span>
+            </motion.div>
+          ) : null}
+
           {error ? (
             <motion.div
               className="feedback error"

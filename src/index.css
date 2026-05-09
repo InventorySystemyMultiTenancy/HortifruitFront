@@ -509,6 +509,11 @@ h3 {
   color: var(--green);
 }
 
+.feedback.warning {
+  background: rgba(255, 183, 3, 0.2);
+  color: #7c5a00;
+}
+
 .summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -528,6 +533,33 @@ h3 {
 
 .summary-box.negative strong {
   color: var(--danger);
+}
+
+.close-checklist {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(27, 67, 50, 0.1);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.close-checklist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.close-checklist-head p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.close-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .chart-card {
@@ -731,6 +763,7 @@ h3 {
 
   .metrics-grid,
   .summary-grid,
+  .close-checklist-grid,
   .report-grid,
   .dashboard-grid,
   .topbar-actions,
