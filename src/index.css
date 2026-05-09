@@ -682,6 +682,14 @@ h3 {
     grid-template-columns: 1fr;
     grid-auto-flow: row;
   }
+
+  .product-close-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-close-head {
+    display: none;
+  }
 }
 
 @media print {
@@ -707,6 +715,39 @@ h3 {
 
   .card,
   .topbar {
+    .product-close-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .product-close-row {
+      display: contents;
+    }
+
+    .product-close-head {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .product-close-cell {
+      padding: 10px 12px;
+      border: 1px solid rgba(27, 67, 50, 0.1);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.74);
+      display: flex;
+      align-items: center;
+    }
+
+    .product-close-cell input {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      outline: none;
+    }
     box-shadow: none;
     border: 1px solid #ddd;
   }

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate, toInputDate } from "../lib/date.js";
 import { useApp } from "../context/AppContext.jsx";
+import { api } from "../lib/api.js";
 
 const fields = [
   {
@@ -35,10 +36,13 @@ const emptyRow = {
 };
 
 export default function DailyCloseForm({ shops = [] }) {
-  const { user, saveDailyClose, loading } = useApp();
+  const { user, products, saveDailyClose, loading } = useApp();
   const [shopId, setShopId] = useState(user?.shopId || shops[0]?.id || "");
   const [closeDate, setCloseDate] = useState(toInputDate(new Date()));
   const [form, setForm] = useState(emptyRow);
+  const [stockRows, setStockRows] = useState([]);
+  const [stockLoading, setStockLoading] = useState(false);
+  const [productEntries, setProductEntries] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -47,6 +51,37 @@ export default function DailyCloseForm({ shops = [] }) {
       setShopId(user.shopId);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!shopId) {
+      setStockRows([]);
+      setProductEntries([]);
+      return;
+    }
+
+    async function loadShopStock() {
+      setStockLoading(true);
+      try {
+        const response = await api.get(`/stock-movements/summary/${shopId}`);
+        const rows = response.products || [];
+        setStockRows(rows);
+        setProductEntries(
+          rows.map((row) => ({
+            productId: row.productId,
+            soldQuantity: "",
+            lossQuantity: "",
+            remainingQuantity: "",
+          })),
+        );
+      } catch (requestError) {
+        setError(requestError.message);
+      } finally {
+        setStockLoading(false);
+      }
+    }
+
+    loadShopStock();
+  }, [shopId]);
 
   const computedBalance = useMemo(() => {
     const opening = Number(form.openingAmount || 0);
@@ -68,6 +103,26 @@ export default function DailyCloseForm({ shops = [] }) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateProductEntry(productId, key, value) {
+    setProductEntries((current) =>
+      current.map((entry) =>
+        entry.productId === productId ? { ...entry, [key]: value } : entry,
+      ),
+    );
+  }
+
+  function stockForProduct(productId) {
+    const row = stockRows.find((item) => item.productId === productId);
+    return Number(row?.quantity || 0);
+  }
+
+  function autoRemaining(entry) {
+    const available = stockForProduct(entry.productId);
+    const sold = Number(entry.soldQuantity || 0);
+    const loss = Number(entry.lossQuantity || 0);
+    return available - sold - loss;
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
@@ -83,6 +138,29 @@ export default function DailyCloseForm({ shops = [] }) {
       return;
     }
 
+    const normalizedEntries = productEntries
+      .map((entry) => {
+        const soldQuantity = Number(entry.soldQuantity || 0);
+        const lossQuantity = Number(entry.lossQuantity || 0);
+        const remainingQuantity =
+          entry.remainingQuantity === "" || entry.remainingQuantity == null
+            ? null
+            : Number(entry.remainingQuantity);
+
+        return {
+          productId: entry.productId,
+          soldQuantity,
+          lossQuantity,
+          remainingQuantity,
+        };
+      })
+      .filter(
+        (entry) =>
+          entry.soldQuantity > 0 ||
+          entry.lossQuantity > 0 ||
+          entry.remainingQuantity != null,
+      );
+
     try {
       await saveDailyClose({
         shopId,
@@ -93,9 +171,18 @@ export default function DailyCloseForm({ shops = [] }) {
         sales: Number(form.sales || 0),
         finalBalance: manualBalance === null ? undefined : manualBalance,
         notes: form.notes,
+        productEntries: normalizedEntries,
       });
 
       setForm(emptyRow);
+      setProductEntries((current) =>
+        current.map((entry) => ({
+          ...entry,
+          soldQuantity: "",
+          lossQuantity: "",
+          remainingQuantity: "",
+        })),
+      );
       setStatusMessage("Fechamento confirmado com sucesso");
     } catch (requestError) {
       setError(requestError.message);
@@ -218,6 +305,101 @@ export default function DailyCloseForm({ shops = [] }) {
           </label>
         </div>
 
+        <div className="spreadsheet-card">
+          <div className="spreadsheet-header">
+            <div>
+              <strong>Fechamento por produto</strong>
+              <p>
+                Informe vendido e perda. Se deixar o restante em branco, o
+                sistema calcula automaticamente.
+              </p>
+            </div>
+          </div>
+
+          {stockLoading ? (
+            <p>Carregando estoque da loja...</p>
+          ) : productEntries.length === 0 ? (
+            <p>Sem estoque para fechamento por produto nesta loja.</p>
+          ) : (
+            <div className="product-close-grid">
+              <div className="product-close-head">Produto</div>
+              <div className="product-close-head">Disponível</div>
+              <div className="product-close-head">Vendido</div>
+              <div className="product-close-head">Perda</div>
+              <div className="product-close-head">Restante</div>
+
+              {productEntries.map((entry) => {
+                const product = products.find((item) => item.id === entry.productId);
+                const available = stockForProduct(entry.productId);
+                const computedRemaining = autoRemaining(entry);
+                const remainingValue =
+                  entry.remainingQuantity === ""
+                    ? computedRemaining.toFixed(3)
+                    : entry.remainingQuantity;
+
+                return (
+                  <div className="product-close-row" key={entry.productId}>
+                    <div className="product-close-cell">
+                      <strong>{product?.name || "Produto"}</strong>
+                    </div>
+                    <div className="product-close-cell">
+                      {available.toFixed(3)} {product?.unit || ""}
+                    </div>
+                    <div className="product-close-cell">
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={entry.soldQuantity}
+                        onChange={(event) =>
+                          updateProductEntry(
+                            entry.productId,
+                            "soldQuantity",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="product-close-cell">
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={entry.lossQuantity}
+                        onChange={(event) =>
+                          updateProductEntry(
+                            entry.productId,
+                            "lossQuantity",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="product-close-cell">
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={entry.remainingQuantity}
+                        onChange={(event) =>
+                          updateProductEntry(
+                            entry.productId,
+                            "remainingQuantity",
+                            event.target.value,
+                          )
+                        }
+                        placeholder={remainingValue}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="summary-grid">
           <div className="summary-box">
             <span>Saldo calculado</span>
@@ -268,7 +450,7 @@ export default function DailyCloseForm({ shops = [] }) {
         <button
           className="action-button primary"
           type="submit"
-          disabled={loading || !balanceMatches}
+          disabled={loading || !balanceMatches || stockLoading}
         >
           <Save size={16} />
           Confirmar Fechamento
