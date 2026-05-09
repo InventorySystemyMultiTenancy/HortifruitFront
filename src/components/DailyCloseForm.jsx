@@ -35,8 +35,14 @@ const emptyRow = {
   notes: "",
 };
 
-export default function DailyCloseForm({ shops = [] }) {
+export default function DailyCloseForm({
+  shops = [],
+  initialClose = null,
+  onCancelEdit,
+  onSaved,
+}) {
   const { user, products, saveDailyClose, loading } = useApp();
+  const isEditMode = Boolean(initialClose?.id);
   const [shopId, setShopId] = useState(user?.shopId || shops[0]?.id || "");
   const [closeDate, setCloseDate] = useState(toInputDate(new Date()));
   const [form, setForm] = useState(emptyRow);
@@ -51,6 +57,28 @@ export default function DailyCloseForm({ shops = [] }) {
       setShopId(user.shopId);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!initialClose) {
+      if (user?.role !== "ADMIN" && user?.shopId) {
+        setShopId(user.shopId);
+      }
+      setCloseDate(toInputDate(new Date()));
+      setForm(emptyRow);
+      return;
+    }
+
+    setShopId(initialClose.shopId || "");
+    setCloseDate(toInputDate(initialClose.closeDate || new Date()));
+    setForm({
+      openingAmount: String(initialClose.openingAmount ?? ""),
+      replenishment: String(initialClose.replenishment ?? ""),
+      losses: String(initialClose.losses ?? ""),
+      sales: String(initialClose.sales ?? ""),
+      finalBalance: String(initialClose.finalBalance ?? ""),
+      notes: initialClose.notes || "",
+    });
+  }, [initialClose, user]);
 
   useEffect(() => {
     if (!shopId) {
@@ -82,6 +110,48 @@ export default function DailyCloseForm({ shops = [] }) {
 
     loadShopStock();
   }, [shopId]);
+
+  useEffect(() => {
+    if (!isEditMode || !initialClose?.items?.length || !stockRows.length) {
+      return;
+    }
+
+    const mapByProduct = new Map();
+
+    for (const item of initialClose.items) {
+      if (!item.productId) continue;
+
+      const current = mapByProduct.get(item.productId) || {
+        soldQuantity: "",
+        lossQuantity: "",
+        remainingQuantity: "",
+      };
+
+      if (item.kind === "VENDA") {
+        current.soldQuantity = String(item.quantity ?? "");
+      }
+
+      if (item.kind === "PERDA") {
+        current.lossQuantity = String(item.quantity ?? "");
+      }
+
+      if (item.kind === "ESTOQUE_FINAL") {
+        current.remainingQuantity = String(item.quantity ?? "");
+      }
+
+      mapByProduct.set(item.productId, current);
+    }
+
+    setProductEntries(
+      stockRows.map((row) => ({
+        productId: row.productId,
+        soldQuantity: mapByProduct.get(row.productId)?.soldQuantity || "",
+        lossQuantity: mapByProduct.get(row.productId)?.lossQuantity || "",
+        remainingQuantity:
+          mapByProduct.get(row.productId)?.remainingQuantity || "",
+      })),
+    );
+  }, [initialClose, isEditMode, stockRows]);
 
   const computedBalance = useMemo(() => {
     const opening = Number(form.openingAmount || 0);
@@ -116,8 +186,24 @@ export default function DailyCloseForm({ shops = [] }) {
     return Number(row?.quantity || 0);
   }
 
+  function previousOutForProduct(productId) {
+    if (!isEditMode || !initialClose?.items?.length) return 0;
+
+    return initialClose.items.reduce((sum, item) => {
+      if (
+        item.productId !== productId ||
+        (item.kind !== "VENDA" && item.kind !== "PERDA")
+      ) {
+        return sum;
+      }
+
+      return sum + Number(item.quantity || 0);
+    }, 0);
+  }
+
   function autoRemaining(entry) {
-    const available = stockForProduct(entry.productId);
+    const available =
+      stockForProduct(entry.productId) + previousOutForProduct(entry.productId);
     const sold = Number(entry.soldQuantity || 0);
     const loss = Number(entry.lossQuantity || 0);
     return available - sold - loss;
@@ -162,7 +248,8 @@ export default function DailyCloseForm({ shops = [] }) {
       );
 
     try {
-      await saveDailyClose({
+      const response = await saveDailyClose({
+        id: initialClose?.id,
         shopId,
         closeDate,
         openingAmount: Number(form.openingAmount || 0),
@@ -183,7 +270,12 @@ export default function DailyCloseForm({ shops = [] }) {
           remainingQuantity: "",
         })),
       );
-      setStatusMessage("Fechamento confirmado com sucesso");
+      setStatusMessage(
+        isEditMode
+          ? "Fechamento atualizado com sucesso"
+          : "Fechamento confirmado com sucesso",
+      );
+      onSaved?.(response);
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -199,7 +291,7 @@ export default function DailyCloseForm({ shops = [] }) {
       <div className="section-heading">
         <div>
           <span className="eyebrow">Fechamento Diário</span>
-          <h2>Entrada rápida do PDV</h2>
+          <h2>{isEditMode ? "Editar fechamento" : "Entrada rápida do PDV"}</h2>
           <p>
             Preencha apenas os campos necessários. O sistema calcula o saldo
             final automaticamente se ele ficar em branco.
@@ -329,8 +421,12 @@ export default function DailyCloseForm({ shops = [] }) {
               <div className="product-close-head">Restante</div>
 
               {productEntries.map((entry) => {
-                const product = products.find((item) => item.id === entry.productId);
-                const available = stockForProduct(entry.productId);
+                const product = products.find(
+                  (item) => item.id === entry.productId,
+                );
+                const available =
+                  stockForProduct(entry.productId) +
+                  previousOutForProduct(entry.productId);
                 const computedRemaining = autoRemaining(entry);
                 const remainingValue =
                   entry.remainingQuantity === ""
@@ -447,14 +543,26 @@ export default function DailyCloseForm({ shops = [] }) {
           ) : null}
         </AnimatePresence>
 
-        <button
-          className="action-button primary"
-          type="submit"
-          disabled={loading || !balanceMatches || stockLoading}
-        >
-          <Save size={16} />
-          Confirmar Fechamento
-        </button>
+        <div className="action-row">
+          {isEditMode ? (
+            <button
+              className="action-button secondary"
+              type="button"
+              onClick={() => onCancelEdit?.()}
+            >
+              Cancelar edição
+            </button>
+          ) : null}
+
+          <button
+            className="action-button primary"
+            type="submit"
+            disabled={loading || !balanceMatches || stockLoading}
+          >
+            <Save size={16} />
+            {isEditMode ? "Salvar edição" : "Confirmar Fechamento"}
+          </button>
+        </div>
       </form>
     </motion.section>
   );

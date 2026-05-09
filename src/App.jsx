@@ -1262,6 +1262,7 @@ function FinancialSection() {
 
 function DailyCloseSection() {
   const { dashboard, user } = useApp();
+  const [editingClose, setEditingClose] = useState(null);
 
   return (
     <div className="stack">
@@ -1275,7 +1276,41 @@ function DailyCloseSection() {
           </p>
         </div>
       ) : null}
-      <DailyCloseForm shops={dashboard.shops} />
+
+      <div className="grid cards-grid">
+        {dashboard.closes.map((close) => (
+          <article className="card list-card" key={close.id}>
+            <div className="list-card-head">
+              <div>
+                <strong>{close.shop?.name || "Loja"}</strong>
+                <p>{formatDateTime(close.closeDate)}</p>
+              </div>
+              <span className="pill success">{close.status}</span>
+            </div>
+            <div className="list-meta">
+              <span>Vendas: {formatCurrency(close.sales)}</span>
+              <span>Perdas: {formatCurrency(close.losses)}</span>
+            </div>
+            <div className="list-meta">
+              <span>Saldo final: {formatCurrency(close.finalBalance)}</span>
+            </div>
+            <button
+              className="action-button secondary"
+              type="button"
+              onClick={() => setEditingClose(close)}
+            >
+              Editar fechamento
+            </button>
+          </article>
+        ))}
+      </div>
+
+      <DailyCloseForm
+        shops={dashboard.shops}
+        initialClose={editingClose}
+        onCancelEdit={() => setEditingClose(null)}
+        onSaved={() => setEditingClose(null)}
+      />
     </div>
   );
 }
