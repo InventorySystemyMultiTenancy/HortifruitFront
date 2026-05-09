@@ -190,6 +190,31 @@ export default function DailyCloseForm({
       : Number(manualBalance.toFixed(2)) === Number(computedBalance.toFixed(2));
   const finalBalance = manualBalance === null ? computedBalance : manualBalance;
 
+  const productStockIssues = useMemo(() => {
+    return productEntries
+      .map((entry) => {
+        const product = products.find((item) => item.id === entry.productId);
+        const available =
+          stockForProduct(entry.productId) +
+          previousOutForProduct(entry.productId);
+        const sold = Number(entry.soldQuantity || 0);
+        const loss = Number(entry.lossQuantity || 0);
+        const totalOut = sold + loss;
+
+        if (totalOut <= available) {
+          return null;
+        }
+
+        return {
+          productId: entry.productId,
+          productName: product?.name || "Produto",
+          available,
+          totalOut,
+        };
+      })
+      .filter(Boolean);
+  }, [productEntries, products, isEditMode, initialClose, stockRows]);
+
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -242,6 +267,14 @@ export default function DailyCloseForm({
 
     if (!balanceMatches) {
       setError("O saldo final informado não bate com a fórmula do fechamento");
+      return;
+    }
+
+    if (productStockIssues.length) {
+      const firstIssue = productStockIssues[0];
+      setError(
+        `Estoque insuficiente em ${firstIssue.productName}. Disponível: ${firstIssue.available.toFixed(3)} | Saída informada: ${firstIssue.totalOut.toFixed(3)}`,
+      );
       return;
     }
 
@@ -457,10 +490,15 @@ export default function DailyCloseForm({
                 const available =
                   stockForProduct(entry.productId) +
                   previousOutForProduct(entry.productId);
+                const sold = Number(entry.soldQuantity || 0);
+                const loss = Number(entry.lossQuantity || 0);
+                const totalOut = sold + loss;
+                const hasStockIssue = totalOut > available;
                 const computedRemaining = autoRemaining(entry);
+                const safeRemaining = Math.max(0, computedRemaining);
                 const remainingValue =
                   entry.remainingQuantity === ""
-                    ? computedRemaining.toFixed(3)
+                    ? safeRemaining.toFixed(3)
                     : entry.remainingQuantity;
 
                 return (
@@ -476,6 +514,7 @@ export default function DailyCloseForm({
                         type="number"
                         step="0.001"
                         min="0"
+                        max={available.toFixed(3)}
                         value={entry.soldQuantity}
                         onChange={(event) =>
                           updateProductEntry(
@@ -492,6 +531,7 @@ export default function DailyCloseForm({
                         type="number"
                         step="0.001"
                         min="0"
+                        max={available.toFixed(3)}
                         value={entry.lossQuantity}
                         onChange={(event) =>
                           updateProductEntry(
@@ -503,7 +543,9 @@ export default function DailyCloseForm({
                         placeholder="0"
                       />
                     </div>
-                    <div className="product-close-cell">
+                    <div
+                      className={`product-close-cell ${hasStockIssue ? "danger" : ""}`}
+                    >
                       <input
                         type="number"
                         step="0.001"
@@ -518,6 +560,9 @@ export default function DailyCloseForm({
                         }
                         placeholder={remainingValue}
                       />
+                      {hasStockIssue ? (
+                        <small>Saída maior que disponível</small>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -587,7 +632,12 @@ export default function DailyCloseForm({
           <button
             className="action-button primary"
             type="submit"
-            disabled={loading || !balanceMatches || stockLoading}
+            disabled={
+              loading ||
+              !balanceMatches ||
+              stockLoading ||
+              productStockIssues.length > 0
+            }
           >
             <Save size={16} />
             {isEditMode ? "Salvar edição" : "Confirmar Fechamento"}
