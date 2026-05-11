@@ -911,11 +911,74 @@ function ShopsSection() {
     user,
   } = useApp();
   const [form, setForm] = useState({ name: "", code: "", city: "" });
+  const [selectedShopDetails, setSelectedShopDetails] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
     await createShop(form);
     setForm({ name: "", code: "", city: "" });
+  }
+
+  function getShopStockDetails(shopId) {
+    const movements = dashboard.stockMovements.filter(
+      (m) => m.shopId === shopId,
+    );
+
+    const stockByProduct = {};
+    for (const m of movements) {
+      if (!stockByProduct[m.productId]) {
+        stockByProduct[m.productId] = {
+          productName: m.product?.name || "Produto desconhecido",
+          unit: m.product?.unit || "UNIT",
+          quantity: 0,
+        };
+      }
+      stockByProduct[m.productId].quantity += Number(m.quantity || 0);
+    }
+
+    return Object.values(stockByProduct);
+  }
+
+  function getShopMetrics(shopId) {
+    // Faturamento: soma das vendas no fechamento diário
+    const shopClosures =
+      dashboard.dailyCloses?.filter((c) => c.shopId === shopId) || [];
+    const revenue = shopClosures.reduce(
+      (sum, c) => sum + Number(c.sales || 0),
+      0,
+    );
+
+    // Gastos: custos diretos da loja + proporção de custos da empresa
+    const shopCosts =
+      dashboard.costs?.filter(
+        (cost) =>
+          cost.scope === "SHOP" && cost.shopId === shopId && cost.isActive,
+      ) || [];
+    const shopCostsTotal = shopCosts.reduce(
+      (sum, c) => sum + Number(c.amount || 0),
+      0,
+    );
+
+    // Custos de empresa: dividir proporcionalmente entre lojas ativas
+    const companyCosts =
+      dashboard.costs?.filter(
+        (cost) => cost.scope === "COMPANY" && cost.isActive,
+      ) || [];
+    const activeShops = dashboard.shops?.filter((s) => s.isActive) || [];
+    const companyCostsPerShop =
+      activeShops.length > 0
+        ? companyCosts.reduce((sum, c) => sum + Number(c.amount || 0), 0) /
+          activeShops.length
+        : 0;
+
+    const totalCosts = shopCostsTotal + companyCostsPerShop;
+    const profit = revenue - totalCosts;
+
+    return {
+      revenue: Number(revenue),
+      costs: Number(totalCosts),
+      profit: Number(profit),
+    };
   }
 
   return (
@@ -984,6 +1047,8 @@ function ShopsSection() {
             className="card list-card"
             key={shop.id}
             whileHover={{ y: -3 }}
+            style={{ cursor: "pointer" }}
+            onClick={() => setSelectedShopDetails(shop)}
           >
             <div className="list-card-head">
               <div>
@@ -1003,9 +1068,10 @@ function ShopsSection() {
                 <button
                   className="action-button secondary"
                   type="button"
-                  onClick={async () => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (window.confirm(`Desativar a loja ${shop.name}?`)) {
-                      await deleteShop(shop.id);
+                      deleteShop(shop.id);
                     }
                   }}
                 >
@@ -1014,7 +1080,8 @@ function ShopsSection() {
                 <button
                   className="action-button secondary danger"
                   type="button"
-                  onClick={async () => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (
                       !window.confirm(
                         `A exclusão permanente exige desativação prévia. Deseja continuar com ${shop.name}?`,
@@ -1031,7 +1098,7 @@ function ShopsSection() {
                       return;
                     }
 
-                    await deactivateAndDeleteShopPermanent(shop.id);
+                    deactivateAndDeleteShopPermanent(shop.id);
                   }}
                 >
                   <Trash2 size={16} />
@@ -1042,6 +1109,103 @@ function ShopsSection() {
           </motion.article>
         ))}
       </div>
+
+      {selectedShopDetails && (
+        <motion.div
+          className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setSelectedShopDetails(null)}
+        >
+          <motion.div
+            className="modal-card"
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">Detalhes da loja</span>
+                <h2>{selectedShopDetails.name}</h2>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSelectedShopDetails(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="grid metrics-grid">
+                <div className="card metric-card positive">
+                  <span>Faturamento</span>
+                  <strong>
+                    {formatCurrency(
+                      getShopMetrics(selectedShopDetails.id).revenue,
+                    )}
+                  </strong>
+                  <small>Total do período</small>
+                </div>
+                <div className="card metric-card warning">
+                  <span>Gastos</span>
+                  <strong>
+                    {formatCurrency(
+                      getShopMetrics(selectedShopDetails.id).costs,
+                    )}
+                  </strong>
+                  <small>Diretos + proporção empresa</small>
+                </div>
+                <div className="card metric-card">
+                  <span>Lucro</span>
+                  <strong>
+                    {formatCurrency(
+                      getShopMetrics(selectedShopDetails.id).profit,
+                    )}
+                  </strong>
+                  <small>Faturamento - Gastos</small>
+                </div>
+              </div>
+
+              <div className="card">
+                <h3 style={{ marginBottom: "16px" }}>Estoque por Produto</h3>
+                {getShopStockDetails(selectedShopDetails.id).length === 0 ? (
+                  <p className="muted">Nenhum produto em estoque</p>
+                ) : (
+                  <div className="list-card">
+                    {getShopStockDetails(selectedShopDetails.id).map(
+                      (item, idx) => (
+                        <div
+                          key={idx}
+                          className="list-card-item"
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "12px 0",
+                            borderBottom: "1px solid rgba(27,67,50,0.08)",
+                          }}
+                        >
+                          <div>
+                            <strong>{item.productName}</strong>
+                            <p className="muted">{item.unit}</p>
+                          </div>
+                          <span className="pill success">
+                            {formatQuantity(item.quantity)}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.section>
   );
 }
