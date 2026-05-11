@@ -36,6 +36,7 @@ export function AppProvider({ children }) {
     startDate: "",
     endDate: "",
     shopId: "all",
+    plantationId: "all",
   }));
 
   useEffect(() => {
@@ -146,6 +147,13 @@ export function AppProvider({ children }) {
         nextFilters.shopId !== "all"
       ) {
         query.set("shopId", nextFilters.shopId);
+      }
+      if (
+        user.role === "ADMIN" &&
+        nextFilters.plantationId &&
+        nextFilters.plantationId !== "all"
+      ) {
+        query.set("plantationId", nextFilters.plantationId);
       }
       if (nextFilters.month) {
         query.set("month", nextFilters.month);

@@ -76,6 +76,7 @@ export default function ReportPanel() {
     loadReport,
     user,
     shops,
+    plantations,
   } = useApp();
   const [localFilters, setLocalFilters] = useState(reportFilters);
 
@@ -172,25 +173,46 @@ export default function ReportPanel() {
           />
         </label>
         {user?.role === "ADMIN" ? (
-          <label className="field">
-            <span>Loja</span>
-            <select
-              value={localFilters.shopId}
-              onChange={(event) =>
-                setLocalFilters((current) => ({
-                  ...current,
-                  shopId: event.target.value,
-                }))
-              }
-            >
-              <option value="all">Todas</option>
-              {shops.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label className="field">
+              <span>Loja</span>
+              <select
+                value={localFilters.shopId}
+                onChange={(event) =>
+                  setLocalFilters((current) => ({
+                    ...current,
+                    shopId: event.target.value,
+                  }))
+                }
+              >
+                <option value="all">Todas</option>
+                {shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Plantação</span>
+              <select
+                value={localFilters.plantationId}
+                onChange={(event) =>
+                  setLocalFilters((current) => ({
+                    ...current,
+                    plantationId: event.target.value,
+                  }))
+                }
+              >
+                <option value="all">Todas</option>
+                {plantations.map((plantation) => (
+                  <option key={plantation.id} value={plantation.id}>
+                    {plantation.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         ) : null}
 
         <button className="action-button primary" type="submit">

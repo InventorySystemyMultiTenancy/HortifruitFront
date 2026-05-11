@@ -1237,14 +1237,29 @@ function FinancialSection() {
     name: "",
     nature: "FIXED",
     scope: "COMPANY",
+    shopId: "",
+    plantationId: "",
     amount: "",
     dueDate: "",
   });
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (form.scope === "SHOP" && !form.shopId) {
+      window.alert("Selecione a loja para gastos com escopo Loja.");
+      return;
+    }
+
+    if (form.scope === "PLANTATION" && !form.plantationId) {
+      window.alert("Selecione a plantação para gastos com escopo Plantação.");
+      return;
+    }
+
     await createCost({
       ...form,
+      shopId: form.scope === "SHOP" ? form.shopId : undefined,
+      plantationId: form.scope === "PLANTATION" ? form.plantationId : undefined,
       amount: Number(form.amount || 0),
       dueDate: form.dueDate || undefined,
     });
@@ -1252,6 +1267,8 @@ function FinancialSection() {
       name: "",
       nature: "FIXED",
       scope: "COMPANY",
+      shopId: "",
+      plantationId: "",
       amount: "",
       dueDate: "",
     });
@@ -1309,6 +1326,11 @@ function FinancialSection() {
                 setForm((current) => ({
                   ...current,
                   scope: event.target.value,
+                  shopId: event.target.value === "SHOP" ? current.shopId : "",
+                  plantationId:
+                    event.target.value === "PLANTATION"
+                      ? current.plantationId
+                      : "",
                 }))
               }
             >
@@ -1346,6 +1368,54 @@ function FinancialSection() {
               }
             />
           </label>
+          {form.scope === "SHOP" ? (
+            <label className="field">
+              <span>Loja</span>
+              <select
+                value={form.shopId}
+                required
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    shopId: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecione uma loja</option>
+                {dashboard.shops
+                  .filter((shop) => shop.isActive)
+                  .map((shop) => (
+                    <option key={shop.id} value={shop.id}>
+                      {shop.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : null}
+          {form.scope === "PLANTATION" ? (
+            <label className="field">
+              <span>Plantação</span>
+              <select
+                value={form.plantationId}
+                required
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    plantationId: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecione uma plantação</option>
+                {dashboard.plantations
+                  .filter((plantation) => plantation.isActive)
+                  .map((plantation) => (
+                    <option key={plantation.id} value={plantation.id}>
+                      {plantation.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : null}
           <div className="field info-box">
             <span>Impacto</span>
             <strong>
@@ -1359,68 +1429,80 @@ function FinancialSection() {
       </form>
 
       <div className="grid cards-grid">
-        {dashboard.costs.map((cost) => (
-          <article className="card list-card" key={cost.id}>
-            <div className="list-card-head">
-              <div>
-                <strong>{cost.name}</strong>
-                <p>{cost.scope}</p>
+        {dashboard.costs.map((cost) => {
+          let scopeName = cost.scope;
+          if (cost.scope === "SHOP" && cost.shopId) {
+            const shop = dashboard.shops.find((s) => s.id === cost.shopId);
+            if (shop) scopeName = `Loja: ${shop.name}`;
+          } else if (cost.scope === "PLANTATION" && cost.plantationId) {
+            const plantation = dashboard.plantations.find(
+              (p) => p.id === cost.plantationId,
+            );
+            if (plantation) scopeName = `Plantação: ${plantation.name}`;
+          }
+          return (
+            <article className="card list-card" key={cost.id}>
+              <div className="list-card-head">
+                <div>
+                  <strong>{cost.name}</strong>
+                  <p>{scopeName}</p>
+                </div>
+                <span
+                  className={`pill ${cost.nature === "FIXED" ? "success" : "warning"}`}
+                >
+                  {cost.nature === "FIXED" ? "Fixo" : "Variável"}
+                </span>
               </div>
-              <span
-                className={`pill ${cost.nature === "FIXED" ? "success" : "warning"}`}
-              >
-                {cost.nature === "FIXED" ? "Fixo" : "Variável"}
-              </span>
-            </div>
-            <div className="list-meta">
-              <span>{formatCurrency(cost.amount)}</span>
-              <span>
-                {cost.dueDate
-                  ? `Vencimento: ${formatDateTime(cost.dueDate)}`
-                  : "Sem vencimento"}
-              </span>
-            </div>
-            <div className="list-meta">
-              <button
-                className="action-button secondary"
-                type="button"
-                onClick={async () => {
-                  if (window.confirm(`Desativar o custo ${cost.name}?`)) {
-                    await deleteCost(cost.id);
-                  }
-                }}
-              >
-                Desativar
-              </button>
-              <button
-                className="action-button secondary danger"
-                type="button"
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `A exclusão permanente exige desativação prévia. Deseja continuar com ${cost.name}?`,
-                    )
-                  ) {
-                    return;
-                  }
+              <div className="list-meta">
+                <span>{formatCurrency(cost.amount)}</span>
+                <span>
+                  {cost.dueDate
+                    ? `Vencimento: ${formatDateTime(cost.dueDate)}`
+                    : "Sem vencimento"}
+                </span>
+              </div>
+              <div className="list-meta">
+                <button
+                  className="action-button secondary"
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm(`Desativar o custo ${cost.name}?`)) {
+                      await deleteCost(cost.id);
+                    }
+                  }}
+                >
+                  Desativar
+                </button>
+                <button
+                  className="action-button secondary danger"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `A exclusão permanente exige desativação prévia. Deseja continuar com ${cost.name}?`,
+                      )
+                    ) {
+                      return;
+                    }
 
-                  if (
-                    !window.confirm(
-                      `Confirma EXCLUSÃO PERMANENTE do custo ${cost.name}? Essa ação não pode ser desfeita.`,
-                    )
-                  ) {
-                    return;
-                  }
+                    if (
+                      !window.confirm(
+                        `Confirma EXCLUSÃO PERMANENTE do custo ${cost.name}? Essa ação não pode ser desfeita.`,
+                      )
+                    ) {
+                      return;
+                    }
 
-                  await deactivateAndDeleteCostPermanent(cost.id);
-                }}
-              >
-                <Trash2 size={16} />
-                Excluir permanente
-              </button>
-            </div>
-          </article>
-        ))}
+                    await deactivateAndDeleteCostPermanent(cost.id);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Excluir permanente
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </motion.section>
   );
