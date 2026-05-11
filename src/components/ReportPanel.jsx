@@ -19,13 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import { useApp } from "../context/AppContext.jsx";
-import {
-  daysBetween,
-  formatCurrency,
-  formatDate,
-  formatMonthLabel,
-  toInputDate,
-} from "../lib/date.js";
+import { formatCurrency, formatDate } from "../lib/date.js";
 
 function buildReportChart(report) {
   if (!report) return [];
@@ -39,37 +33,15 @@ function buildReportChart(report) {
   ];
 }
 
-function fixedCostPerDay(report) {
+function dailyCostBreakdown(report) {
   if (!report) return [];
 
-  const periodDays = report.filters?.month
-    ? new Date(
-        report.filters.month.slice(0, 4),
-        Number(report.filters.month.slice(5, 7)),
-        0,
-      ).getDate()
-    : report.filters?.startDate && report.filters?.endDate
-      ? daysBetween(report.filters.startDate, report.filters.endDate).length
-      : 1;
-
-  const dailyValue = Number(report.costs?.fixedRateado || 0) / periodDays;
-  const days = report.filters?.month
-    ? daysBetween(
-        new Date(`${report.filters.month}-01`),
-        new Date(
-          new Date(`${report.filters.month}-01`).getFullYear(),
-          Number(report.filters.month.slice(5, 7)),
-          0,
-        ),
-      )
-    : daysBetween(
-        report.filters?.startDate || new Date(),
-        report.filters?.endDate || new Date(),
-      );
-
-  return days.map((day) => ({
-    date: formatDate(day),
-    value: dailyValue,
+  return (report.costs?.daily || []).map((row) => ({
+    date: formatDate(row.date),
+    fixed: Number(row.fixed || 0),
+    variable: Number(row.variable || 0),
+    plantation: Number(row.plantation || 0),
+    total: Number(row.total || 0),
   }));
 }
 
@@ -107,7 +79,7 @@ export default function ReportPanel() {
 
   const report = dashboard.report;
   const chartData = useMemo(() => buildReportChart(report), [report]);
-  const fixedCostDays = useMemo(() => fixedCostPerDay(report), [report]);
+  const dailyCosts = useMemo(() => dailyCostBreakdown(report), [report]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -279,22 +251,29 @@ export default function ReportPanel() {
           <div className="card">
             <div className="card-header">
               <div>
-                <span className="eyebrow">Custos fixos</span>
+                <span className="eyebrow">Custos consolidados</span>
                 <h3>Rateio por dia</h3>
               </div>
               <TrendingUp size={18} />
             </div>
 
             <div className="fixed-cost-highlight">
-              <strong>{formatCurrency(fixedCostDays[0]?.value || 0)}</strong>
-              <span>Valor diário rateado</span>
+              <strong>{formatCurrency(dailyCosts[0]?.total || 0)}</strong>
+              <span>Valor diário total (fixo + variável + plantação)</span>
             </div>
 
             <div className="fixed-cost-list">
-              {fixedCostDays.slice(0, 8).map((item) => (
+              {dailyCosts.slice(0, 8).map((item) => (
                 <div className="fixed-cost-row" key={item.date}>
-                  <span>{item.date}</span>
-                  <strong>{formatCurrency(item.value)}</strong>
+                  <div>
+                    <span>{item.date}</span>
+                    <small>
+                      Fixo: {formatCurrency(item.fixed)} | Variável:{" "}
+                      {formatCurrency(item.variable)} | Plantação:{" "}
+                      {formatCurrency(item.plantation)}
+                    </small>
+                  </div>
+                  <strong>{formatCurrency(item.total)}</strong>
                 </div>
               ))}
             </div>

@@ -592,6 +592,17 @@ h3 {
   border: 1px solid rgba(27, 67, 50, 0.08);
 }
 
+.fixed-cost-row {
+  align-items: flex-start;
+}
+
+.fixed-cost-row small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
