@@ -80,6 +80,10 @@ export default function ReportPanel() {
   const report = dashboard.report;
   const chartData = useMemo(() => buildReportChart(report), [report]);
   const dailyCosts = useMemo(() => dailyCostBreakdown(report), [report]);
+  const averageDailyCost =
+    dailyCosts.length > 0
+      ? Number(report?.costs?.total || 0) / dailyCosts.length
+      : 0;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -258,8 +262,8 @@ export default function ReportPanel() {
             </div>
 
             <div className="fixed-cost-highlight">
-              <strong>{formatCurrency(dailyCosts[0]?.total || 0)}</strong>
-              <span>Valor diário total (fixo + variável + plantação)</span>
+              <strong>{formatCurrency(averageDailyCost)}</strong>
+              <span>Média diária de gastos no período</span>
             </div>
 
             <div className="fixed-cost-list">
