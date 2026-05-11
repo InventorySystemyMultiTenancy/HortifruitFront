@@ -21,7 +21,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import DailyCloseForm from "./components/DailyCloseForm.jsx";
 import ReportPanel from "./components/ReportPanel.jsx";
-import StockMovementForm from "./components/StockMovementForm.jsx";
 import { AppProvider, useApp } from "./context/AppContext.jsx";
 import { formatCurrency, formatDateTime } from "./lib/date.js";
 import {
@@ -269,7 +268,11 @@ function DashboardSection() {
         <div className="card metric-card warning">
           <span>Gastos totais</span>
           <strong>{formatCurrency(report?.costs?.total)}</strong>
-          <small>Custos rateados + variáveis + plantação</small>
+          <small>
+            Fixo: {formatCurrency(report?.costs?.fixedRateado)} | Variável:{" "}
+            {formatCurrency(report?.costs?.variable)} | Plantação:{" "}
+            {formatCurrency(report?.costs?.plantation)}
+          </small>
         </div>
         <div className="card metric-card">
           <span>Saldo líquido</span>
@@ -690,7 +693,6 @@ function StockSection() {
     movementDate: "",
     notes: "",
   });
-  const [tab, setTab] = useState("entrada");
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -726,202 +728,176 @@ function StockSection() {
           <span className="eyebrow">Logística</span>
           <h2>Movimentações de estoque</h2>
           <p>
-            Registro de remessas da plantação para lojas e controle de
-            vendas/desperdício.
+            Registro de entradas de estoque da plantação para as lojas. Vendas e
+            perdas devem ser lançadas no fechamento diário.
           </p>
         </div>
       </div>
 
-      {/* Abas */}
-      <div className="tabs">
-        <button
-          className={`tab-button ${tab === "entrada" ? "active" : ""}`}
-          onClick={() => setTab("entrada")}
-        >
-          <Boxes size={16} />
-          Entrada de Estoque
-        </button>
-        <button
-          className={`tab-button ${tab === "venda" ? "active" : ""}`}
-          onClick={() => setTab("venda")}
-        >
-          <Store size={16} />
-          Venda / Desperdício
-        </button>
-      </div>
-
-      {/* Tab: Entrada */}
-      {tab === "entrada" && (
-        <>
-          <form className="card form-card" onSubmit={handleSubmit}>
-            <div className="form-grid five-columns">
-              <label className="field">
-                <span>Produto</span>
-                <select
-                  value={form.productId}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      productId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Selecione</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Plantação</span>
-                <select
-                  value={form.plantationId}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      plantationId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Não informar</option>
-                  {dashboard.plantations.map((plantation) => (
-                    <option key={plantation.id} value={plantation.id}>
-                      {plantation.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Loja</span>
-                <select
-                  value={
-                    user?.role === "ADMIN" ? form.shopId : user?.shopId || ""
-                  }
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      shopId: event.target.value,
-                    }))
-                  }
-                  disabled={user?.role !== "ADMIN"}
-                >
-                  <option value="">Selecione</option>
-                  {dashboard.shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Quantidade</span>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={form.quantity}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      quantity: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Custo unitário</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.unitCost}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      unitCost: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <div className="form-grid two-columns">
-              <label className="field">
-                <span>Data da movimentação</span>
-                <input
-                  type="date"
-                  value={form.movementDate}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      movementDate: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Observações</span>
-                <input
-                  value={form.notes}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      notes: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <button className="action-button primary" type="submit">
-              <Boxes size={16} />
-              Registrar movimentação
-            </button>
-          </form>
-
-          <div className="grid cards-grid">
-            {stockMovements.map((movement) => (
-              <article className="card list-card" key={movement.id}>
-                <div className="list-card-head">
-                  <div>
-                    <strong>{movement.product?.name || "Produto"}</strong>
-                    <p>{movement.shop?.name || "Sem loja"}</p>
-                  </div>
-                  <span className="pill success">
-                    {formatQuantity(movement.quantity)}
-                  </span>
-                </div>
-                <div className="list-meta">
-                  <span>Plantação: {movement.plantation?.name || "-"}</span>
-                  <span>
-                    Custo:{" "}
-                    {movement.unitCost
-                      ? formatCurrency(movement.unitCost)
-                      : "-"}
-                  </span>
-                </div>
-                {user?.role === "ADMIN" ? (
-                  <button
-                    className="action-button secondary danger"
-                    type="button"
-                    onClick={async () => {
-                      if (
-                        window.confirm("Excluir esta movimentação de estoque?")
-                      ) {
-                        await deleteStockMovement(movement.id);
-                      }
-                    }}
-                  >
-                    <Trash2 size={16} />
-                    Excluir
-                  </button>
-                ) : null}
-              </article>
-            ))}
+      <>
+        <form className="card form-card" onSubmit={handleSubmit}>
+          <div className="form-grid five-columns">
+            <label className="field">
+              <span>Produto</span>
+              <select
+                value={form.productId}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    productId: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecione</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Plantação</span>
+              <select
+                value={form.plantationId}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    plantationId: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Não informar</option>
+                {dashboard.plantations.map((plantation) => (
+                  <option key={plantation.id} value={plantation.id}>
+                    {plantation.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Loja</span>
+              <select
+                value={
+                  user?.role === "ADMIN" ? form.shopId : user?.shopId || ""
+                }
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    shopId: event.target.value,
+                  }))
+                }
+                disabled={user?.role !== "ADMIN"}
+              >
+                <option value="">Selecione</option>
+                {dashboard.shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Quantidade</span>
+              <input
+                type="number"
+                step="0.001"
+                value={form.quantity}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    quantity: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Custo unitário</span>
+              <input
+                type="number"
+                step="0.01"
+                value={form.unitCost}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    unitCost: event.target.value,
+                  }))
+                }
+              />
+            </label>
           </div>
-        </>
-      )}
+          <div className="form-grid two-columns">
+            <label className="field">
+              <span>Data da movimentação</span>
+              <input
+                type="date"
+                value={form.movementDate}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    movementDate: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Observações</span>
+              <input
+                value={form.notes}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    notes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+          <button className="action-button primary" type="submit">
+            <Boxes size={16} />
+            Registrar movimentação
+          </button>
+        </form>
 
-      {/* Tab: Venda/Desperdício */}
-      {tab === "venda" && <StockMovementForm />}
+        <div className="grid cards-grid">
+          {stockMovements.map((movement) => (
+            <article className="card list-card" key={movement.id}>
+              <div className="list-card-head">
+                <div>
+                  <strong>{movement.product?.name || "Produto"}</strong>
+                  <p>{movement.shop?.name || "Sem loja"}</p>
+                </div>
+                <span className="pill success">
+                  {formatQuantity(movement.quantity)}
+                </span>
+              </div>
+              <div className="list-meta">
+                <span>Plantação: {movement.plantation?.name || "-"}</span>
+                <span>
+                  Custo:{" "}
+                  {movement.unitCost ? formatCurrency(movement.unitCost) : "-"}
+                </span>
+              </div>
+              {user?.role === "ADMIN" ? (
+                <button
+                  className="action-button secondary danger"
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      window.confirm("Excluir esta movimentação de estoque?")
+                    ) {
+                      await deleteStockMovement(movement.id);
+                    }
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Excluir
+                </button>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </>
     </motion.section>
   );
 }

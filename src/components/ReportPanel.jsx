@@ -230,7 +230,11 @@ export default function ReportPanel() {
         <div className="card metric-card warning">
           <span>Gastos totais</span>
           <strong>{formatCurrency(report?.costs?.total)}</strong>
-          <small>Rateio fixo + variável + plantação</small>
+          <small>
+            Fixo: {formatCurrency(report?.costs?.fixedRateado)} | Variável:{" "}
+            {formatCurrency(report?.costs?.variable)} | Plantação:{" "}
+            {formatCurrency(report?.costs?.plantation)}
+          </small>
         </div>
         <div className="card metric-card">
           <span>Resultado líquido</span>
