@@ -296,8 +296,20 @@ h3 {
   );
 }
 
+.metric-card.danger {
+  background: linear-gradient(
+    180deg,
+    rgba(201, 42, 42, 0.22),
+    rgba(201, 42, 42, 0.12)
+  );
+}
+
 .metric-card.warning strong {
   color: #8a6200;
+}
+
+.metric-card.danger strong {
+  color: #9b1c1c;
 }
 
 .card {
@@ -925,12 +937,21 @@ h3 {
   border-left: 3px solid var(--orange);
 }
 
+.metric-card.danger {
+  background: rgba(201, 42, 42, 0.08);
+  border-left: 3px solid var(--danger);
+}
+
 .metric-card.positive strong {
   color: var(--success);
 }
 
 .metric-card.warning strong {
   color: var(--orange);
+}
+
+.metric-card.danger strong {
+  color: var(--danger);
 }
 
 .list-card-item {

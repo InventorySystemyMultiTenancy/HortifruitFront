@@ -203,10 +203,12 @@ export default function ReportPanel() {
         <div className="card metric-card positive">
           <span>Faturamento bruto</span>
           <strong>{formatCurrency(report?.grossRevenue)}</strong>
-          <small>
-            Perdas: {formatCurrency(report?.lossesTotal)} | Receita líquida:{" "}
-            {formatCurrency(report?.netRevenue)}
-          </small>
+          <small>Receita total no período</small>
+        </div>
+        <div className="card metric-card danger">
+          <span>Perdas no período</span>
+          <strong>{formatCurrency(report?.lossesTotal)}</strong>
+          <small>Valor perdido informado no fechamento diário</small>
         </div>
         <div className="card metric-card warning">
           <span>Gastos totais</span>

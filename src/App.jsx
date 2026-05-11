@@ -263,9 +263,12 @@ function DashboardSection() {
         <div className="card metric-card positive">
           <span>Faturamento bruto</span>
           <strong>{formatCurrency(report?.grossRevenue)}</strong>
-          <small>
-            Vendas no período | Perdas: {formatCurrency(report?.lossesTotal)}
-          </small>
+          <small>Vendas totais no período</small>
+        </div>
+        <div className="card metric-card danger">
+          <span>Perdas no período</span>
+          <strong>{formatCurrency(report?.lossesTotal)}</strong>
+          <small>Valor perdido informado no fechamento diário</small>
         </div>
         <div className="card metric-card warning">
           <span>Gastos totais</span>
