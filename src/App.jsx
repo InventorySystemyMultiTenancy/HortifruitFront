@@ -263,7 +263,9 @@ function DashboardSection() {
         <div className="card metric-card positive">
           <span>Faturamento bruto</span>
           <strong>{formatCurrency(report?.grossRevenue)}</strong>
-          <small>Venda consolidada no período</small>
+          <small>
+            Vendas no período | Perdas: {formatCurrency(report?.lossesTotal)}
+          </small>
         </div>
         <div className="card metric-card warning">
           <span>Gastos totais</span>
@@ -277,7 +279,7 @@ function DashboardSection() {
         <div className="card metric-card">
           <span>Saldo líquido</span>
           <strong>{formatCurrency(report?.netResult)}</strong>
-          <small>Receita menos despesas totais</small>
+          <small>Receita líquida (vendas - perdas) menos despesas</small>
         </div>
       </div>
 
@@ -947,6 +949,10 @@ function ShopsSection() {
       (sum, c) => sum + Number(c.sales || 0),
       0,
     );
+    const losses = shopClosures.reduce(
+      (sum, c) => sum + Number(c.losses || 0),
+      0,
+    );
 
     // Gastos: custos diretos da loja + proporção de custos da empresa
     const shopCosts =
@@ -972,10 +978,11 @@ function ShopsSection() {
         : 0;
 
     const totalCosts = shopCostsTotal + companyCostsPerShop;
-    const profit = revenue - totalCosts;
+    const profit = revenue - losses - totalCosts;
 
     return {
       revenue: Number(revenue),
+      losses: Number(losses),
       costs: Number(totalCosts),
       profit: Number(profit),
     };
@@ -1166,7 +1173,13 @@ function ShopsSection() {
                       getShopMetrics(selectedShopDetails.id).profit,
                     )}
                   </strong>
-                  <small>Faturamento - Gastos</small>
+                  <small>
+                    Faturamento - Perdas - Gastos ({" "}
+                    {formatCurrency(
+                      getShopMetrics(selectedShopDetails.id).losses,
+                    )}{" "}
+                    de perdas)
+                  </small>
                 </div>
               </div>
 

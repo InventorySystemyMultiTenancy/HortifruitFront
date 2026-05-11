@@ -49,6 +49,8 @@ function downloadCsv(report) {
   const rows = [
     ["Indicador", "Valor"],
     ["Faturamento Bruto", report?.grossRevenue || 0],
+    ["Perdas", report?.lossesTotal || 0],
+    ["Receita Líquida", report?.netRevenue || 0],
     ["Gastos Fixos Rateados", report?.costs?.fixedRateado || 0],
     ["Gastos Variáveis", report?.costs?.variable || 0],
     ["Custos de Plantação", report?.costs?.plantation || 0],
@@ -201,7 +203,10 @@ export default function ReportPanel() {
         <div className="card metric-card positive">
           <span>Faturamento bruto</span>
           <strong>{formatCurrency(report?.grossRevenue)}</strong>
-          <small>Receita total no período</small>
+          <small>
+            Perdas: {formatCurrency(report?.lossesTotal)} | Receita líquida:{" "}
+            {formatCurrency(report?.netRevenue)}
+          </small>
         </div>
         <div className="card metric-card warning">
           <span>Gastos totais</span>
@@ -215,7 +220,7 @@ export default function ReportPanel() {
         <div className="card metric-card">
           <span>Resultado líquido</span>
           <strong>{formatCurrency(report?.netResult)}</strong>
-          <small>Diferença entre faturamento e gastos</small>
+          <small>Receita líquida (vendas - perdas) menos gastos</small>
         </div>
       </div>
 
