@@ -126,7 +126,7 @@ function AuthScreen() {
   );
 }
 
-function Sidebar() {
+function Sidebar({ isOpen, onClose }) {
   const { activeView, setActiveView, logout, user } = useApp();
   const visibleSidebarItems =
     user?.role === "ADMIN"
@@ -135,8 +135,18 @@ function Sidebar() {
           (item) => item.key === "stock" || item.key === "daily-close",
         );
 
+  function handleNavigate(nextView) {
+    setActiveView(nextView);
+    onClose?.();
+  }
+
+  function handleLogout() {
+    logout();
+    onClose?.();
+  }
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "open" : ""}`}>
       <div className="sidebar-brand">
         <div className="brand-mark compact">
           <img src="/image.png" alt="Logo Hortifruit" />
@@ -159,7 +169,7 @@ function Sidebar() {
               key={item.key}
               className={`nav-item ${activeView === item.key ? "active" : ""}`}
               type="button"
-              onClick={() => setActiveView(item.key)}
+              onClick={() => handleNavigate(item.key)}
             >
               <Icon size={18} />
               <span>{item.label}</span>
@@ -171,7 +181,7 @@ function Sidebar() {
       <button
         className="action-button secondary logout-button"
         type="button"
-        onClick={logout}
+        onClick={handleLogout}
       >
         <LogOut size={16} />
         Sair
@@ -180,7 +190,7 @@ function Sidebar() {
   );
 }
 
-function Topbar() {
+function Topbar({ isMenuOpen, onToggleMenu }) {
   const {
     user,
     dashboard,
@@ -207,6 +217,16 @@ function Topbar() {
   return (
     <header className="topbar card">
       <div>
+        <button
+          className="mobile-menu-toggle"
+          type="button"
+          onClick={onToggleMenu}
+          aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={isMenuOpen}
+        >
+          {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          <span>Menu</span>
+        </button>
         <span className="eyebrow">Bem-vindo</span>
         <h2>{user?.name}</h2>
         <p>{formatDateTime(new Date())}</p>
@@ -2234,12 +2254,27 @@ function ContentArea() {
 
 function Shell() {
   const { user, loading, error } = useApp();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  function toggleMobileMenu() {
+    setIsMobileMenuOpen((current) => !current);
+  }
+
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false);
+  }
 
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <div className={`app-shell ${isMobileMenuOpen ? "mobile-menu-open" : ""}`}>
+      <Sidebar isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
+      <button
+        className="mobile-nav-backdrop"
+        type="button"
+        onClick={closeMobileMenu}
+        aria-label="Fechar menu"
+      />
       <main className="main-panel">
-        <Topbar />
+        <Topbar isMenuOpen={isMobileMenuOpen} onToggleMenu={toggleMobileMenu} />
         {loading ? (
           <div className="global-loading">Carregando dados do backend...</div>
         ) : null}
