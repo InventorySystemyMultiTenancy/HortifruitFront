@@ -88,9 +88,9 @@ svg {
     rgba(16, 38, 29, 0.98)
   );
   color: #f7fbf6;
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  position: relative;
+  min-height: 100vh;
+  height: auto;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
