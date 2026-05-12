@@ -620,6 +620,12 @@ h3 {
   display: grid;
   place-items: center;
   padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(17, 33, 24, 0.46), rgba(17, 33, 24, 0.34)),
+    url("/loginFundo.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .auth-card {
