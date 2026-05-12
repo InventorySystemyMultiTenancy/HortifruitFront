@@ -83,9 +83,18 @@ export default function DailyCloseForm({
   onSaved,
 }) {
   const { user, products, saveDailyClose, loading } = useApp();
-  const workerShopId = user?.role === "ADMIN" ? "" : user?.shopId || "";
+  const workerShopIds = [
+    ...new Set([
+      ...(user?.shopIds || []),
+      ...(user?.shopId ? [user.shopId] : []),
+    ]),
+  ];
+  const shopOptions =
+    user?.role === "ADMIN"
+      ? shops
+      : shops.filter((shop) => workerShopIds.includes(shop.id));
   const isEditMode = Boolean(initialClose?.id);
-  const [shopId, setShopId] = useState(workerShopId || shops[0]?.id || "");
+  const [shopId, setShopId] = useState(shopOptions[0]?.id || "");
   const [closeDate, setCloseDate] = useState(toInputDate(new Date()));
   const [form, setForm] = useState(emptyRow);
   const [stockRows, setStockRows] = useState([]);
@@ -96,14 +105,14 @@ export default function DailyCloseForm({
 
   useEffect(() => {
     if (user?.role !== "ADMIN") {
-      setShopId(workerShopId);
+      setShopId((current) => current || shopOptions[0]?.id || "");
     }
-  }, [user, workerShopId]);
+  }, [user, shopOptions]);
 
   useEffect(() => {
     if (!initialClose) {
       if (user?.role !== "ADMIN") {
-        setShopId(workerShopId);
+        setShopId((current) => current || shopOptions[0]?.id || "");
       }
       setCloseDate(toInputDate(new Date()));
       setForm(emptyRow);
@@ -111,7 +120,9 @@ export default function DailyCloseForm({
     }
 
     setShopId(
-      user?.role === "ADMIN" ? initialClose.shopId || "" : workerShopId,
+      user?.role === "ADMIN"
+        ? initialClose.shopId || ""
+        : initialClose.shopId || shopOptions[0]?.id || "",
     );
     setCloseDate(toInputDate(initialClose.closeDate || new Date()));
     setForm({
@@ -122,10 +133,10 @@ export default function DailyCloseForm({
       finalBalance: String(initialClose.finalBalance ?? ""),
       notes: extractUserNotes(initialClose.notes),
     });
-  }, [initialClose, user, workerShopId]);
+  }, [initialClose, user, shopOptions]);
 
   useEffect(() => {
-    const targetShopId = user?.role === "ADMIN" ? shopId : workerShopId;
+    const targetShopId = shopId;
 
     if (!targetShopId) {
       setStockRows([]);
@@ -163,7 +174,7 @@ export default function DailyCloseForm({
     }
 
     loadShopStock();
-  }, [shopId, user, workerShopId]);
+  }, [shopId, user]);
 
   useEffect(() => {
     if (!isEditMode || !initialClose?.items?.length || !stockRows.length) {
@@ -461,10 +472,9 @@ export default function DailyCloseForm({
               <select
                 value={shopId}
                 onChange={(event) => setShopId(event.target.value)}
-                disabled={user?.role !== "ADMIN"}
               >
                 <option value="">Selecione</option>
-                {shops.map((shop) => (
+                {shopOptions.map((shop) => (
                   <option key={shop.id} value={shop.id}>
                     {shop.name}
                   </option>

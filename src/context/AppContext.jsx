@@ -29,6 +29,7 @@ export function AppProvider({ children }) {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedShopId, setSelectedShopId] = useState("all");
   const [dashboard, setDashboard] = useState(defaultDashboard);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [reportFilters, setReportFilters] = useState(() => ({
@@ -56,9 +57,15 @@ export function AppProvider({ children }) {
   }, [user]);
 
   useEffect(() => {
-    if (user?.role === "WORKER" && user.shopId) {
-      setSelectedShopId(user.shopId);
-      setReportFilters((current) => ({ ...current, shopId: user.shopId }));
+    if (user?.role === "WORKER") {
+      const workerPrimaryShopId = user.shopId || user.shopIds?.[0] || "";
+      if (workerPrimaryShopId) {
+        setSelectedShopId(workerPrimaryShopId);
+        setReportFilters((current) => ({
+          ...current,
+          shopId: workerPrimaryShopId,
+        }));
+      }
       setActiveView("stock");
     }
   }, [user]);
@@ -131,6 +138,7 @@ export function AppProvider({ children }) {
     setToken("");
     setUser(null);
     setDashboard(defaultDashboard);
+    setUsers([]);
     setSelectedShopId("all");
     setActiveView("dashboard");
   }
@@ -300,10 +308,11 @@ export function AppProvider({ children }) {
   }
 
   async function createStockMovement(payload) {
+    const workerShopId = payload.shopId || user.shopId || user.shopIds?.[0];
     await api.post("/stock-movements", {
       ...payload,
       companyId: user.role === "ADMIN" ? user.companyId : undefined,
-      shopId: user.role === "ADMIN" ? payload.shopId : user.shopId,
+      shopId: user.role === "ADMIN" ? payload.shopId : workerShopId,
     });
     await refreshDashboard();
   }
@@ -314,10 +323,11 @@ export function AppProvider({ children }) {
   }
 
   async function saveDailyClose(payload) {
+    const workerShopId = payload.shopId || user.shopId || user.shopIds?.[0];
     const body = {
       ...payload,
       companyId: user.role === "ADMIN" ? user.companyId : undefined,
-      shopId: user.role === "ADMIN" ? payload.shopId : user.shopId,
+      shopId: user.role === "ADMIN" ? payload.shopId : workerShopId,
     };
 
     const response = payload.id
@@ -326,6 +336,30 @@ export function AppProvider({ children }) {
 
     await refreshDashboard();
     return response;
+  }
+
+  async function loadUsers(includeInactive = true) {
+    if (user?.role !== "ADMIN") {
+      setUsers([]);
+      return [];
+    }
+
+    const query = includeInactive ? "?includeInactive=true" : "";
+    const rows = await api.get(`/users${query}`);
+    setUsers(rows || []);
+    return rows || [];
+  }
+
+  async function createUser(payload) {
+    const created = await api.post("/users", payload);
+    await loadUsers(true);
+    return created;
+  }
+
+  async function updateUser(id, payload) {
+    const updated = await api.patch(`/users/${id}`, payload);
+    await loadUsers(true);
+    return updated;
   }
 
   async function loadReport(nextFilters = reportFilters) {
@@ -370,6 +404,7 @@ export function AppProvider({ children }) {
       reportFilters,
       setReportFilters,
       dashboard,
+      users,
       shops: dashboard.shops,
       products: dashboard.products,
       plantations: dashboard.plantations,
@@ -379,6 +414,9 @@ export function AppProvider({ children }) {
       login,
       logout,
       refreshDashboard,
+      loadUsers,
+      createUser,
+      updateUser,
       loadReport,
       createShop,
       createCost,
@@ -409,6 +447,7 @@ export function AppProvider({ children }) {
       selectedShopId,
       token,
       user,
+      users,
     ],
   );
 

@@ -6,17 +6,20 @@ import {
   Boxes,
   Building2,
   Download,
+  Edit,
   LayoutDashboard,
   Leaf,
   LogOut,
   Menu,
   PlusCircle,
   Printer,
+  Power,
   ScanBarcode,
   Store,
   Truck,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import DailyCloseForm from "./components/DailyCloseForm.jsx";
@@ -41,6 +44,7 @@ const sidebarItems = [
   { key: "stock", label: "Movimentações", icon: Truck },
   { key: "daily-close", label: "Fechamento Diário", icon: ScanBarcode },
   { key: "financial", label: "Financeiro", icon: BadgeDollarSign },
+  { key: "users", label: "Usuários", icon: Users },
   { key: "reports", label: "Relatórios", icon: BarChart3 },
 ];
 
@@ -190,8 +194,13 @@ function Topbar() {
   const shopOptions = dashboard.shops || [];
 
   useEffect(() => {
-    if (selectedShopId === "all" && user?.role !== "ADMIN" && user?.shopId) {
-      setSelectedShopId(user.shopId);
+    const workerPrimaryShopId = user?.shopId || user?.shopIds?.[0];
+    if (
+      selectedShopId === "all" &&
+      user?.role !== "ADMIN" &&
+      workerPrimaryShopId
+    ) {
+      setSelectedShopId(workerPrimaryShopId);
     }
   }, [selectedShopId, setSelectedShopId, user]);
 
@@ -691,6 +700,16 @@ function StockSection() {
     deleteStockMovement,
     user,
   } = useApp();
+  const workerShopIds = [
+    ...new Set([
+      ...(user?.shopIds || []),
+      ...(user?.shopId ? [user.shopId] : []),
+    ]),
+  ];
+  const shopOptions =
+    user?.role === "ADMIN"
+      ? dashboard.shops
+      : dashboard.shops.filter((shop) => workerShopIds.includes(shop.id));
   const [form, setForm] = useState({
     productId: "",
     plantationId: "",
@@ -701,12 +720,21 @@ function StockSection() {
     notes: "",
   });
 
+  useEffect(() => {
+    if (user?.role !== "ADMIN" && !form.shopId) {
+      setForm((current) => ({
+        ...current,
+        shopId: current.shopId || shopOptions[0]?.id || "",
+      }));
+    }
+  }, [form.shopId, shopOptions, user]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     await createStockMovement({
       ...form,
       plantationId: form.plantationId || undefined,
-      shopId: user?.role === "ADMIN" ? form.shopId || undefined : undefined,
+      shopId: form.shopId || undefined,
       quantity: Number(form.quantity || 0),
       unitCost: form.unitCost ? Number(form.unitCost) : undefined,
       movementDate: form.movementDate || undefined,
@@ -785,19 +813,16 @@ function StockSection() {
             <label className="field">
               <span>Loja</span>
               <select
-                value={
-                  user?.role === "ADMIN" ? form.shopId : user?.shopId || ""
-                }
+                value={form.shopId}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
                     shopId: event.target.value,
                   }))
                 }
-                disabled={user?.role !== "ADMIN"}
               >
                 <option value="">Selecione</option>
-                {dashboard.shops.map((shop) => (
+                {shopOptions.map((shop) => (
                   <option key={shop.id} value={shop.id}>
                     {shop.name}
                   </option>
@@ -1804,6 +1829,350 @@ function DailyCloseSection() {
   );
 }
 
+function UsersSection() {
+  const { user, users, dashboard, loadUsers, createUser, updateUser } =
+    useApp();
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "WORKER",
+    shopIds: [],
+    isActive: true,
+  });
+  const [busy, setBusy] = useState(false);
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [editingPasswordFor, setEditingPasswordFor] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === "ADMIN") {
+      loadUsers(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
+
+  if (user?.role !== "ADMIN") {
+    return null;
+  }
+
+  const filteredUsers = users.filter((u) => {
+    if (roleFilter === "ALL") return true;
+    return u.role === roleFilter;
+  });
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await createUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        shopIds: form.role === "WORKER" ? form.shopIds : [],
+        isActive: form.isActive,
+      });
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        role: "WORKER",
+        shopIds: [],
+        isActive: true,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleFormShop(shopId) {
+    setForm((current) => {
+      const exists = current.shopIds.includes(shopId);
+      return {
+        ...current,
+        shopIds: exists
+          ? current.shopIds.filter((id) => id !== shopId)
+          : [...current.shopIds, shopId],
+      };
+    });
+  }
+
+  async function toggleUserShop(targetUser, shopId) {
+    const currentShopIds = targetUser.shopIds || [];
+    const nextShopIds = currentShopIds.includes(shopId)
+      ? currentShopIds.filter((id) => id !== shopId)
+      : [...currentShopIds, shopId];
+
+    if (targetUser.role === "WORKER" && nextShopIds.length === 0) {
+      window.alert("Funcionário deve ter ao menos uma loja vinculada.");
+      return;
+    }
+
+    await updateUser(targetUser.id, { shopIds: nextShopIds });
+  }
+
+  async function toggleUserActive(targetUser) {
+    await updateUser(targetUser.id, { isActive: !targetUser.isActive });
+  }
+
+  async function updateUserPassword(targetUserId) {
+    if (!newPassword || newPassword.length < 6) {
+      window.alert("Senha deve ter ao menos 6 caracteres.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      await updateUser(targetUserId, { password: newPassword });
+      setEditingPasswordFor(null);
+      setNewPassword("");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  }
+
+  return (
+    <motion.section
+      className="stack"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Gestão de acesso</span>
+          <h2>Usuários</h2>
+          <p>
+            Crie usuários e vincule quantas lojas quiser para cada funcionário.
+          </p>
+        </div>
+      </div>
+
+      <form className="card form-card" onSubmit={handleSubmit}>
+        <div className="form-grid four-columns">
+          <label className="field">
+            <span>Nome</span>
+            <input
+              value={form.name}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+              required
+            />
+          </label>
+          <label className="field">
+            <span>E-mail</span>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  email: event.target.value,
+                }))
+              }
+              required
+            />
+          </label>
+          <label className="field">
+            <span>Senha</span>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+              minLength={6}
+              required
+            />
+          </label>
+          <label className="field">
+            <span>Perfil</span>
+            <select
+              value={form.role}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, role: event.target.value }))
+              }
+            >
+              <option value="WORKER">Funcionário</option>
+              <option value="ADMIN">Administrador</option>
+            </select>
+          </label>
+        </div>
+
+        {form.role === "WORKER" ? (
+          <div className="stack">
+            <span className="eyebrow">Lojas vinculadas</span>
+            <div className="grid cards-grid">
+              {dashboard.shops.map((shop) => (
+                <label
+                  key={shop.id}
+                  className="card"
+                  style={{ padding: "12px" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.shopIds.includes(shop.id)}
+                    onChange={() => toggleFormShop(shop.id)}
+                  />
+                  <span style={{ marginLeft: "8px" }}>{shop.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <button className="action-button primary" type="submit" disabled={busy}>
+          Cadastrar usuário
+        </button>
+      </form>
+
+      <div
+        className="stack"
+        style={{ marginTop: "24px", marginBottom: "16px" }}
+      >
+        <span className="eyebrow">Filtrar por perfil</span>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            className={`action-button ${roleFilter === "ALL" ? "primary" : "secondary"}`}
+            onClick={() => setRoleFilter("ALL")}
+          >
+            Todos
+          </button>
+          <button
+            className={`action-button ${roleFilter === "ADMIN" ? "primary" : "secondary"}`}
+            onClick={() => setRoleFilter("ADMIN")}
+          >
+            Administradores
+          </button>
+          <button
+            className={`action-button ${roleFilter === "WORKER" ? "primary" : "secondary"}`}
+            onClick={() => setRoleFilter("WORKER")}
+          >
+            Funcionários
+          </button>
+        </div>
+      </div>
+
+      <div className="grid cards-grid">
+        {filteredUsers.map((row) => (
+          <article className="card list-card" key={row.id}>
+            <div className="list-card-head">
+              <div>
+                <strong>{row.name}</strong>
+                <p>{row.email}</p>
+              </div>
+              <span
+                className={`pill ${row.role === "ADMIN" ? "warning" : "success"}`}
+              >
+                {row.role}
+              </span>
+            </div>
+
+            <div className="list-meta">
+              <span>Lojas vinculadas: {(row.shopIds || []).length}</span>
+            </div>
+
+            <div className="list-meta" style={{ gap: "8px" }}>
+              <button
+                className={`action-button ${row.isActive ? "secondary" : "secondary"} ${!row.isActive ? "danger" : ""}`}
+                title={row.isActive ? "Desativar usuário" : "Ativar usuário"}
+                onClick={() => toggleUserActive(row)}
+                style={{ padding: "8px 12px", fontSize: "14px" }}
+              >
+                <Power size={16} />
+                {row.isActive ? "Ativo" : "Inativo"}
+              </button>
+              <button
+                className="action-button secondary"
+                title="Alterar senha"
+                onClick={() => {
+                  setEditingPasswordFor(row.id);
+                  setNewPassword("");
+                }}
+                style={{ padding: "8px 12px", fontSize: "14px" }}
+              >
+                <Edit size={16} />
+                Senha
+              </button>
+            </div>
+
+            {editingPasswordFor === row.id && (
+              <div
+                className="stack"
+                style={{
+                  marginTop: "12px",
+                  padding: "12px",
+                  backgroundColor: "rgba(0,0,0,0.02)",
+                  borderRadius: "8px",
+                }}
+              >
+                <label className="field">
+                  <span>Nova senha</span>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={6}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    className="action-button primary"
+                    onClick={() => updateUserPassword(row.id)}
+                    disabled={
+                      updatingPassword || !newPassword || newPassword.length < 6
+                    }
+                  >
+                    Atualizar
+                  </button>
+                  <button
+                    className="action-button secondary"
+                    onClick={() => {
+                      setEditingPasswordFor(null);
+                      setNewPassword("");
+                    }}
+                  >
+                    <X size={16} />
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {row.role === "WORKER" ? (
+              <div className="stack">
+                <span className="eyebrow">Vincular lojas</span>
+                <div className="grid cards-grid">
+                  {dashboard.shops.map((shop) => (
+                    <label
+                      key={`${row.id}-${shop.id}`}
+                      className="card"
+                      style={{ padding: "10px" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(row.shopIds || []).includes(shop.id)}
+                        onChange={() => toggleUserShop(row, shop.id)}
+                      />
+                      <span style={{ marginLeft: "8px" }}>{shop.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </motion.section>
+  );
+}
+
 function ReportsSection() {
   return <ReportPanel />;
 }
@@ -1834,6 +2203,7 @@ function ContentArea() {
       {effectiveView === "financial" ? (
         <FinancialSection key="financial" />
       ) : null}
+      {effectiveView === "users" ? <UsersSection key="users" /> : null}
       {effectiveView === "reports" ? <ReportsSection key="reports" /> : null}
     </AnimatePresence>
   );
