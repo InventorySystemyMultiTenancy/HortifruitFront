@@ -83,8 +83,9 @@ export default function DailyCloseForm({
   onSaved,
 }) {
   const { user, products, saveDailyClose, loading } = useApp();
+  const workerShopId = user?.role === "ADMIN" ? "" : user?.shopId || "";
   const isEditMode = Boolean(initialClose?.id);
-  const [shopId, setShopId] = useState(user?.shopId || shops[0]?.id || "");
+  const [shopId, setShopId] = useState(workerShopId || shops[0]?.id || "");
   const [closeDate, setCloseDate] = useState(toInputDate(new Date()));
   const [form, setForm] = useState(emptyRow);
   const [stockRows, setStockRows] = useState([]);
@@ -94,22 +95,24 @@ export default function DailyCloseForm({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (user?.role !== "ADMIN" && user?.shopId) {
-      setShopId(user.shopId);
+    if (user?.role !== "ADMIN") {
+      setShopId(workerShopId);
     }
-  }, [user]);
+  }, [user, workerShopId]);
 
   useEffect(() => {
     if (!initialClose) {
-      if (user?.role !== "ADMIN" && user?.shopId) {
-        setShopId(user.shopId);
+      if (user?.role !== "ADMIN") {
+        setShopId(workerShopId);
       }
       setCloseDate(toInputDate(new Date()));
       setForm(emptyRow);
       return;
     }
 
-    setShopId(initialClose.shopId || "");
+    setShopId(
+      user?.role === "ADMIN" ? initialClose.shopId || "" : workerShopId,
+    );
     setCloseDate(toInputDate(initialClose.closeDate || new Date()));
     setForm({
       openingAmount: String(initialClose.openingAmount ?? ""),
@@ -119,19 +122,29 @@ export default function DailyCloseForm({
       finalBalance: String(initialClose.finalBalance ?? ""),
       notes: extractUserNotes(initialClose.notes),
     });
-  }, [initialClose, user]);
+  }, [initialClose, user, workerShopId]);
 
   useEffect(() => {
-    if (!shopId) {
+    const targetShopId = user?.role === "ADMIN" ? shopId : workerShopId;
+
+    if (!targetShopId) {
       setStockRows([]);
       setProductEntries([]);
+      if (user?.role !== "ADMIN") {
+        setError(
+          "Funcionário sem loja vinculada. Peça ao administrador para vincular sua loja.",
+        );
+      }
       return;
     }
 
     async function loadShopStock() {
       setStockLoading(true);
       try {
-        const response = await api.get(`/stock-movements/summary/${shopId}`);
+        setError("");
+        const response = await api.get(
+          `/stock-movements/summary/${targetShopId}`,
+        );
         const rows = response.products || [];
         setStockRows(rows);
         setProductEntries(
@@ -150,7 +163,7 @@ export default function DailyCloseForm({
     }
 
     loadShopStock();
-  }, [shopId]);
+  }, [shopId, user, workerShopId]);
 
   useEffect(() => {
     if (!isEditMode || !initialClose?.items?.length || !stockRows.length) {
