@@ -442,7 +442,7 @@ export default function DailyCloseForm({
       <div className="section-heading">
         <div>
           <span className="eyebrow">Fechamento Diário</span>
-          <h2>{isEditMode ? "Editar fechamento" : "Entrada rápida do PDV"}</h2>
+          <h2>{isEditMode ? "Editar fechamento" : "Lançar fechamento"}</h2>
           <p>
             Preencha apenas os campos necessários. O sistema calcula o saldo
             final automaticamente se ele ficar em branco.
