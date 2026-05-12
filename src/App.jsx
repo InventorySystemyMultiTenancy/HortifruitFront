@@ -1548,6 +1548,15 @@ function DailyCloseSection() {
     return formatQuantity(value);
   }
 
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   function parseAuditTrail(rawNotes) {
     if (!rawNotes) {
       return { userNotes: "", auditTrail: [] };
@@ -1619,23 +1628,25 @@ function DailyCloseSection() {
       .map(
         (item) => `
           <tr>
-            <td>${resolveProductName(item.productId)}</td>
-            <td>${item.kind}</td>
-            <td>${formatQuantity(item.quantity)}</td>
+            <td>${escapeHtml(resolveProductName(item.productId))}</td>
+            <td>${escapeHtml(item.kind)}</td>
+            <td>${escapeHtml(formatQuantity(item.quantity))}</td>
           </tr>
         `,
       )
       .join("");
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
       return;
     }
 
     printWindow.document.write(`
+      <!doctype html>
       <html>
         <head>
           <title>Fechamento ${close.id}</title>
+          <meta charset="utf-8" />
           <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #10261d; }
             h1 { margin: 0 0 12px 0; }
@@ -1647,15 +1658,15 @@ function DailyCloseSection() {
         </head>
         <body>
           <h1>Fechamento Diário</h1>
-          <div class="meta"><strong>Loja:</strong> ${close.shop?.name || "-"}</div>
-          <div class="meta"><strong>Data:</strong> ${formatDateTime(close.closeDate)}</div>
-          <div class="meta"><strong>Status:</strong> ${close.status || "-"}</div>
-          <div class="meta"><strong>Abertura:</strong> ${formatCurrency(close.openingAmount || 0)}</div>
-          <div class="meta"><strong>Reposição:</strong> ${formatCurrency(close.replenishment || 0)}</div>
-          <div class="meta"><strong>Vendas:</strong> ${formatCurrency(close.sales || 0)}</div>
-          <div class="meta"><strong>Perdas:</strong> ${formatCurrency(close.losses || 0)}</div>
-          <div class="meta"><strong>Saldo Final:</strong> ${formatCurrency(close.finalBalance || 0)}</div>
-          <div class="meta"><strong>Observações:</strong> ${userNotes || "-"}</div>
+          <div class="meta"><strong>Loja:</strong> ${escapeHtml(close.shop?.name || "-")}</div>
+          <div class="meta"><strong>Data:</strong> ${escapeHtml(formatDateTime(close.closeDate))}</div>
+          <div class="meta"><strong>Status:</strong> ${escapeHtml(close.status || "-")}</div>
+          <div class="meta"><strong>Abertura:</strong> ${escapeHtml(formatCurrency(close.openingAmount || 0))}</div>
+          <div class="meta"><strong>Reposição:</strong> ${escapeHtml(formatCurrency(close.replenishment || 0))}</div>
+          <div class="meta"><strong>Vendas:</strong> ${escapeHtml(formatCurrency(close.sales || 0))}</div>
+          <div class="meta"><strong>Perdas:</strong> ${escapeHtml(formatCurrency(close.losses || 0))}</div>
+          <div class="meta"><strong>Saldo Final:</strong> ${escapeHtml(formatCurrency(close.finalBalance || 0))}</div>
+          <div class="meta"><strong>Observações:</strong> ${escapeHtml(userNotes || "-")}</div>
 
           <h2>Movimentações por produto</h2>
           <table>
@@ -1675,8 +1686,20 @@ function DailyCloseSection() {
     `);
 
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+
+    const triggerPrint = () => {
+      // Wait one frame so layout/styles are ready before printing.
+      printWindow.requestAnimationFrame(() => {
+        printWindow.focus();
+        printWindow.print();
+      });
+    };
+
+    if (printWindow.document.readyState === "complete") {
+      triggerPrint();
+    } else {
+      printWindow.onload = triggerPrint;
+    }
   }
 
   return (
