@@ -73,10 +73,8 @@ function AuthScreen() {
             <img src="/image.png" alt="Logo Hortifruit" />
           </div>
           <div>
-            <span className="eyebrow">Hortifruit InfraSyncTech</span>
             <h1>
-              Gestão operacional para hortifruti com ritmo de balcão e visão de
-              diretoria.
+              Hortifruit Consoniagro
             </h1>
           </div>
         </div>
