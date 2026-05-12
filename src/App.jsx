@@ -73,9 +73,7 @@ function AuthScreen() {
             <img src="/image.png" alt="Logo Hortifruit" />
           </div>
           <div>
-            <h1>
-              Hortifruit Consoniagro
-            </h1>
+            <h1>Hortifruit Consoniagro</h1>
           </div>
         </div>
 
@@ -126,6 +124,12 @@ function AuthScreen() {
 
 function Sidebar() {
   const { activeView, setActiveView, logout, user } = useApp();
+  const visibleSidebarItems =
+    user?.role === "ADMIN"
+      ? sidebarItems
+      : sidebarItems.filter(
+          (item) => item.key === "stock" || item.key === "daily-close",
+        );
 
   return (
     <aside className="sidebar">
@@ -144,7 +148,7 @@ function Sidebar() {
       </div>
 
       <nav className="nav-list">
-        {sidebarItems.map((item) => {
+        {visibleSidebarItems.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -1805,22 +1809,32 @@ function ReportsSection() {
 }
 
 function ContentArea() {
-  const { activeView } = useApp();
+  const { activeView, user } = useApp();
+  const effectiveView =
+    user?.role === "ADMIN"
+      ? activeView
+      : activeView === "stock" || activeView === "daily-close"
+        ? activeView
+        : "stock";
 
   return (
     <AnimatePresence mode="wait">
-      {activeView === "dashboard" ? <DashboardSection key="dashboard" /> : null}
-      {activeView === "shops" ? <ShopsSection key="shops" /> : null}
-      {activeView === "products" ? <ProductsSection key="products" /> : null}
-      {activeView === "plantations" ? (
+      {effectiveView === "dashboard" ? (
+        <DashboardSection key="dashboard" />
+      ) : null}
+      {effectiveView === "shops" ? <ShopsSection key="shops" /> : null}
+      {effectiveView === "products" ? <ProductsSection key="products" /> : null}
+      {effectiveView === "plantations" ? (
         <PlantationsSection key="plantations" />
       ) : null}
-      {activeView === "stock" ? <StockSection key="stock" /> : null}
-      {activeView === "daily-close" ? (
+      {effectiveView === "stock" ? <StockSection key="stock" /> : null}
+      {effectiveView === "daily-close" ? (
         <DailyCloseSection key="daily-close" />
       ) : null}
-      {activeView === "financial" ? <FinancialSection key="financial" /> : null}
-      {activeView === "reports" ? <ReportsSection key="reports" /> : null}
+      {effectiveView === "financial" ? (
+        <FinancialSection key="financial" />
+      ) : null}
+      {effectiveView === "reports" ? <ReportsSection key="reports" /> : null}
     </AnimatePresence>
   );
 }

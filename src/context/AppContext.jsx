@@ -59,6 +59,7 @@ export function AppProvider({ children }) {
     if (user?.role === "WORKER" && user.shopId) {
       setSelectedShopId(user.shopId);
       setReportFilters((current) => ({ ...current, shopId: user.shopId }));
+      setActiveView("stock");
     }
   }, [user]);
 
@@ -116,7 +117,7 @@ export function AppProvider({ children }) {
       const response = await api.post("/auth/login", credentials);
       setToken(response.token);
       setUser(response.user);
-      setActiveView("dashboard");
+      setActiveView(response.user?.role === "ADMIN" ? "dashboard" : "stock");
       return response;
     } catch (requestError) {
       setError(requestError.message);
