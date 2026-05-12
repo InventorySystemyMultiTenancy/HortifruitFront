@@ -31,6 +31,12 @@ body,
   min-height: 100%;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: "Inter", sans-serif;
@@ -669,6 +675,46 @@ h3 {
 
 .auth-button {
   margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .auth-shell {
+    padding: 12px;
+    align-items: start;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px;
+  }
+
+  .auth-card .brand-lockup {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .auth-brand-mark {
+    width: 92px;
+    height: 92px;
+    border-radius: 22px;
+  }
+
+  .auth-card h1 {
+    font-size: clamp(1.7rem, 8vw, 2.2rem);
+    line-height: 1.08;
+  }
+
+  .auth-form {
+    margin-top: 18px;
+  }
+
+  .auth-form input,
+  .auth-form .action-button {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .tabs {
