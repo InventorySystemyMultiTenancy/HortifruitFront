@@ -2294,6 +2294,7 @@ function AIAnalysisSection() {
 
   const insights = useMemo(() => {
     const raw =
+      aiReport?.ai?.resumo ||
       aiReport?.ai?.insights ||
       aiReport?.ai?.summary ||
       aiReport?.insights ||
@@ -2306,7 +2307,11 @@ function AIAnalysisSection() {
         .map((item) => item.trim())
         .filter(Boolean);
     }
-    return [];
+    const extra = [
+      ...(aiReport?.ai?.alertas || []),
+      ...(aiReport?.ai?.observacoes || []),
+    ].filter(Boolean);
+    return extra;
   }, [aiReport]);
 
   function resolvePanelValue(path, fallback = null) {
@@ -2315,28 +2320,32 @@ function AIAnalysisSection() {
 
   const panel = {
     buyMore: resolvePanelValue(
-      aiReport?.ai?.whatToBuyMore ||
+      aiReport?.ai?.comprarMais ||
+        aiReport?.ai?.whatToBuyMore ||
         aiReport?.ai?.buyMore ||
         aiReport?.whatToBuyMore ||
         aiReport?.buyMore ||
         aiReport?.recommendations?.buyMore,
     ),
     spendLess: resolvePanelValue(
-      aiReport?.ai?.whereToSpendLess ||
+      aiReport?.ai?.gastarMenos ||
+        aiReport?.ai?.whereToSpendLess ||
         aiReport?.ai?.spendLess ||
         aiReport?.whereToSpendLess ||
         aiReport?.spendLess ||
         aiReport?.recommendations?.spendLess,
     ),
     trending: resolvePanelValue(
-      aiReport?.ai?.productsOnRise ||
+      aiReport?.ai?.produtosEmAlta ||
+        aiReport?.ai?.productsOnRise ||
         aiReport?.ai?.trendingProducts ||
         aiReport?.trendingProducts ||
         aiReport?.productsOnRise ||
         aiReport?.recommendations?.trending,
     ),
     seasonality: resolvePanelValue(
-      aiReport?.ai?.seasonality ||
+      aiReport?.ai?.sazonalidade ||
+        aiReport?.ai?.seasonality ||
         aiReport?.seasonality ||
         aiReport?.recommendations?.seasonality,
     ),
@@ -2370,7 +2379,12 @@ function AIAnalysisSection() {
       return (
         <ul className="insights-list">
           {value.map((item, index) => (
-            <li key={`${item}-${index}`}>{item}</li>
+            <li key={`${index}-${JSON.stringify(item)}`}>
+              {typeof item === "string"
+                ? item
+                : `${item.produto || item.item || ""}$
+{item.motivo ? ` - ${item.motivo}` : item.nota ? ` - ${item.nota}` : item.janela ? ` - ${item.janela}` : ""}`}
+            </li>
           ))}
         </ul>
       );
