@@ -2382,8 +2382,15 @@ function AIAnalysisSection() {
             <li key={`${index}-${JSON.stringify(item)}`}>
               {typeof item === "string"
                 ? item
-                : `${item.produto || item.item || ""}$
-{item.motivo ? ` - ${item.motivo}` : item.nota ? ` - ${item.nota}` : item.janela ? ` - ${item.janela}` : ""}`}
+                : `${item.produto || item.item || ""}${
+                    item.motivo
+                      ? ` - ${item.motivo}`
+                      : item.nota
+                        ? ` - ${item.nota}`
+                        : item.janela
+                          ? ` - ${item.janela}`
+                          : ""
+                  }`}
             </li>
           ))}
         </ul>
