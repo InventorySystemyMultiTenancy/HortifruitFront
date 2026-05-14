@@ -234,7 +234,7 @@ function Topbar({ isMenuOpen, onToggleMenu }) {
           <span>Menu</span>
         </button>
         <span className="eyebrow">Bem-vindo</span>
-        <h2>{user?.name}</h2>
+        <h2>Bem-vindo, {user?.name}</h2>
         <p>{formatDateTime(new Date())}</p>
       </div>
 
