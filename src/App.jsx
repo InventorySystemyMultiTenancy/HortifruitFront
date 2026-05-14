@@ -2240,29 +2240,65 @@ function AIAnalysisSection() {
 
   const todayMetrics = useMemo(() => {
     const source =
-      aiReport?.today || aiReport?.summary?.today || aiReport?.metrics?.today;
+      aiReport?.summary?.today ||
+      aiReport?.today ||
+      aiReport?.metrics?.today;
     return {
-      costs: Number(source?.costs ?? source?.expenses ?? 0),
-      revenue: Number(source?.revenue ?? source?.income ?? 0),
-      profit: Number(source?.profit ?? source?.netProfit ?? 0),
+      costs: Number(
+        source?.costs?.total ??
+          source?.costsTotal ??
+          source?.totalCosts ??
+          source?.expenses ??
+          0,
+      ),
+      revenue: Number(
+        source?.grossRevenue ?? source?.revenue ?? source?.income ?? 0,
+      ),
+      profit: Number(
+        source?.netResult ??
+          source?.profit ??
+          source?.netProfit ??
+          source?.netRevenue ??
+          0,
+      ),
     };
   }, [aiReport]);
 
   const monthMetrics = useMemo(() => {
     const source =
+      aiReport?.summary?.month ||
       aiReport?.month ||
       aiReport?.summary?.month ||
       aiReport?.metrics?.month ||
       aiReport?.currentMonth;
     return {
-      costs: Number(source?.costs ?? source?.expenses ?? 0),
-      revenue: Number(source?.revenue ?? source?.income ?? 0),
-      profit: Number(source?.profit ?? source?.netProfit ?? 0),
+      costs: Number(
+        source?.costs?.total ??
+          source?.costsTotal ??
+          source?.totalCosts ??
+          source?.expenses ??
+          0,
+      ),
+      revenue: Number(
+        source?.grossRevenue ?? source?.revenue ?? source?.income ?? 0,
+      ),
+      profit: Number(
+        source?.netResult ??
+          source?.profit ??
+          source?.netProfit ??
+          source?.netRevenue ??
+          0,
+      ),
     };
   }, [aiReport]);
 
   const insights = useMemo(() => {
-    const raw = aiReport?.insights || aiReport?.summary?.insights || [];
+    const raw =
+      aiReport?.ai?.insights ||
+      aiReport?.ai?.summary ||
+      aiReport?.insights ||
+      aiReport?.summary?.insights ||
+      [];
     if (Array.isArray(raw)) return raw.filter(Boolean);
     if (typeof raw === "string") {
       return raw
@@ -2279,22 +2315,30 @@ function AIAnalysisSection() {
 
   const panel = {
     buyMore: resolvePanelValue(
-      aiReport?.buyMore ||
+      aiReport?.ai?.whatToBuyMore ||
+        aiReport?.ai?.buyMore ||
         aiReport?.whatToBuyMore ||
+        aiReport?.buyMore ||
         aiReport?.recommendations?.buyMore,
     ),
     spendLess: resolvePanelValue(
-      aiReport?.spendLess ||
+      aiReport?.ai?.whereToSpendLess ||
+        aiReport?.ai?.spendLess ||
         aiReport?.whereToSpendLess ||
+        aiReport?.spendLess ||
         aiReport?.recommendations?.spendLess,
     ),
     trending: resolvePanelValue(
-      aiReport?.trendingProducts ||
+      aiReport?.ai?.productsOnRise ||
+        aiReport?.ai?.trendingProducts ||
+        aiReport?.trendingProducts ||
         aiReport?.productsOnRise ||
         aiReport?.recommendations?.trending,
     ),
     seasonality: resolvePanelValue(
-      aiReport?.seasonality || aiReport?.recommendations?.seasonality,
+      aiReport?.ai?.seasonality ||
+        aiReport?.seasonality ||
+        aiReport?.recommendations?.seasonality,
     ),
   };
 
