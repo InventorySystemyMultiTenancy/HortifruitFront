@@ -274,7 +274,7 @@ function Topbar({ isMenuOpen, onToggleMenu }) {
 }
 
 function DashboardSection() {
-  const { user, dashboard } = useApp();
+  const { user, dashboard, setActiveView } = useApp();
   const report = dashboard.report;
   const chartData = useMemo(
     () =>
@@ -296,6 +296,24 @@ function DashboardSection() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
     >
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Painel geral</span>
+          <h2>Dashboard</h2>
+          <p>Acompanhe os principais indicadores do periodo.</p>
+        </div>
+        <div className="action-row">
+          <button
+            className="action-button primary"
+            type="button"
+            onClick={() => setActiveView("ai-analysis")}
+          >
+            <Sparkles size={16} />
+            Analise com IA
+          </button>
+        </div>
+      </div>
+
       <div className="grid metrics-grid">
         <div className="card metric-card positive">
           <span>Faturamento bruto</span>
@@ -2697,7 +2715,7 @@ function ContentArea() {
 }
 
 function Shell() {
-  const { user, loading, error } = useApp();
+  const { user, loading, error, setActiveView } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   function toggleMobileMenu() {
@@ -2733,6 +2751,16 @@ function Shell() {
           </span>
         </footer>
       </main>
+      {user?.role === "ADMIN" ? (
+        <button
+          className="floating-chat"
+          type="button"
+          onClick={() => setActiveView("ai-chat")}
+          aria-label="Abrir chat inteligente"
+        >
+          <MessageSquare size={20} />
+        </button>
+      ) : null}
     </div>
   );
 }
