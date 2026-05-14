@@ -9,12 +9,15 @@ import {
   Edit,
   LayoutDashboard,
   Leaf,
+  Loader2,
   LogOut,
+  MessageSquare,
   Menu,
   PlusCircle,
   Printer,
   Power,
   ScanBarcode,
+  Sparkles,
   Store,
   Truck,
   Trash2,
@@ -25,7 +28,8 @@ import { useEffect, useMemo, useState } from "react";
 import DailyCloseForm from "./components/DailyCloseForm.jsx";
 import ReportPanel from "./components/ReportPanel.jsx";
 import { AppProvider, useApp } from "./context/AppContext.jsx";
-import { formatCurrency, formatDateTime } from "./lib/date.js";
+import { api } from "./lib/api.js";
+import { formatCurrency, formatDateTime, toInputDate } from "./lib/date.js";
 import {
   Bar,
   BarChart,
@@ -46,6 +50,8 @@ const sidebarItems = [
   { key: "financial", label: "Financeiro", icon: BadgeDollarSign },
   { key: "users", label: "Usuários", icon: Users },
   { key: "reports", label: "Relatórios", icon: BarChart3 },
+  { key: "ai-analysis", label: "Analise com IA", icon: Sparkles },
+  { key: "ai-chat", label: "Chat inteligente", icon: MessageSquare },
 ];
 
 function formatQuantity(value) {
@@ -2220,6 +2226,375 @@ function ReportsSection() {
   return <ReportPanel />;
 }
 
+function AIAnalysisSection() {
+  const [aiReport, setAiReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeoutId = window.setTimeout(() => setToast(""), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  const todayMetrics = useMemo(() => {
+    const source =
+      aiReport?.today || aiReport?.summary?.today || aiReport?.metrics?.today;
+    return {
+      costs: Number(source?.costs ?? source?.expenses ?? 0),
+      revenue: Number(source?.revenue ?? source?.income ?? 0),
+      profit: Number(source?.profit ?? source?.netProfit ?? 0),
+    };
+  }, [aiReport]);
+
+  const monthMetrics = useMemo(() => {
+    const source =
+      aiReport?.month ||
+      aiReport?.summary?.month ||
+      aiReport?.metrics?.month ||
+      aiReport?.currentMonth;
+    return {
+      costs: Number(source?.costs ?? source?.expenses ?? 0),
+      revenue: Number(source?.revenue ?? source?.income ?? 0),
+      profit: Number(source?.profit ?? source?.netProfit ?? 0),
+    };
+  }, [aiReport]);
+
+  const insights = useMemo(() => {
+    const raw = aiReport?.insights || aiReport?.summary?.insights || [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === "string") {
+      return raw
+        .split(/\n|\r|\u2022|-/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, [aiReport]);
+
+  function resolvePanelValue(path, fallback = null) {
+    return path ?? fallback;
+  }
+
+  const panel = {
+    buyMore: resolvePanelValue(
+      aiReport?.buyMore ||
+        aiReport?.whatToBuyMore ||
+        aiReport?.recommendations?.buyMore,
+    ),
+    spendLess: resolvePanelValue(
+      aiReport?.spendLess ||
+        aiReport?.whereToSpendLess ||
+        aiReport?.recommendations?.spendLess,
+    ),
+    trending: resolvePanelValue(
+      aiReport?.trendingProducts ||
+        aiReport?.productsOnRise ||
+        aiReport?.recommendations?.trending,
+    ),
+    seasonality: resolvePanelValue(
+      aiReport?.seasonality || aiReport?.recommendations?.seasonality,
+    ),
+  };
+
+  async function handleGenerateReport() {
+    const today = toInputDate(new Date());
+    const month = today.slice(0, 7);
+
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.post("/reports/ai", {
+        date: today,
+        month,
+      });
+      setAiReport(response || null);
+    } catch (requestError) {
+      setError("Nao foi possivel gerar o relatorio agora. Tente novamente.");
+      setToast("Nao foi possivel gerar o relatorio. Verifique sua conexao.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderPanelContent(value) {
+    if (!value) {
+      return <p className="muted">Sem resposta ainda.</p>;
+    }
+    if (Array.isArray(value)) {
+      return (
+        <ul className="insights-list">
+          {value.map((item, index) => (
+            <li key={`${item}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+    return <p>{value}</p>;
+  }
+
+  return (
+    <motion.section
+      className="stack"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      {toast ? <div className="toast error">{toast}</div> : null}
+
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Relatorio inteligente</span>
+          <h2>Analise com IA</h2>
+          <p>
+            Gere um resumo com insights e oportunidades para compras,
+            reducao de custos e sazonalidade.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid two-columns ai-metrics-grid">
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <span className="eyebrow">Hoje</span>
+              <h3>Custos, receitas e lucro</h3>
+            </div>
+            <BadgeDollarSign size={18} />
+          </div>
+          <div className="summary-grid">
+            <div className="summary-box">
+              <span>Custos</span>
+              <strong>{formatCurrency(todayMetrics.costs)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Receitas</span>
+              <strong>{formatCurrency(todayMetrics.revenue)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Lucro</span>
+              <strong>{formatCurrency(todayMetrics.profit)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <span className="eyebrow">Mes atual</span>
+              <h3>Custos, receitas e lucro</h3>
+            </div>
+            <BarChart3 size={18} />
+          </div>
+          <div className="summary-grid">
+            <div className="summary-box">
+              <span>Custos</span>
+              <strong>{formatCurrency(monthMetrics.costs)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Receitas</span>
+              <strong>{formatCurrency(monthMetrics.revenue)}</strong>
+            </div>
+            <div className="summary-box">
+              <span>Lucro</span>
+              <strong>{formatCurrency(monthMetrics.profit)}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <span className="eyebrow">Insights da IA</span>
+            <h3>Resumo rapido</h3>
+          </div>
+          <Sparkles size={18} />
+        </div>
+        {insights.length ? (
+          <ul className="insights-list">
+            {insights.map((item, index) => (
+              <li key={`${item}-${index}`}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">Gere um relatorio para ver os insights.</p>
+        )}
+      </div>
+
+      <div className="ai-actions">
+        <button
+          className="action-button primary"
+          type="button"
+          onClick={handleGenerateReport}
+          disabled={loading}
+        >
+          {loading ? <Loader2 size={16} className="spin" /> : null}
+          Gerar relatorio com IA
+        </button>
+        {loading ? (
+          <div className="ai-loading">
+            <Loader2 size={16} className="spin" />
+            <span>Gerando relatorio...</span>
+          </div>
+        ) : null}
+        {error ? <div className="feedback error">{error}</div> : null}
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <span className="eyebrow">Relatorio IA</span>
+            <h3>Oportunidades principais</h3>
+          </div>
+          <Sparkles size={18} />
+        </div>
+        <div className="grid two-columns ai-panel-grid">
+          <div className="ai-panel-item">
+            <h4>O que comprar mais</h4>
+            {renderPanelContent(panel.buyMore)}
+          </div>
+          <div className="ai-panel-item">
+            <h4>Onde gastar menos</h4>
+            {renderPanelContent(panel.spendLess)}
+          </div>
+          <div className="ai-panel-item">
+            <h4>Produtos em alta</h4>
+            {renderPanelContent(panel.trending)}
+          </div>
+          <div className="ai-panel-item">
+            <h4>Sazonalidade (frutas/legumes/verduras)</h4>
+            {renderPanelContent(panel.seasonality)}
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function AIChatSection() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeoutId = window.setTimeout(() => setToast(""), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  async function handleSend(event) {
+    event.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+
+    setError("");
+    setLoading(true);
+    setInput("");
+
+    const userMessage = {
+      id: `${Date.now()}-user`,
+      role: "user",
+      content: trimmed,
+    };
+
+    setMessages((current) => [...current, userMessage]);
+
+    try {
+      const response = await api.post("/ai/chat", {
+        message: trimmed,
+        context: {},
+      });
+
+      const reply =
+        response?.reply ||
+        response?.message ||
+        response?.answer ||
+        response?.response ||
+        "Nao consegui gerar uma resposta agora.";
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: `${Date.now()}-assistant`,
+          role: "assistant",
+          content: reply,
+        },
+      ]);
+    } catch (requestError) {
+      setError("Nao foi possivel responder agora. Tente novamente.");
+      setToast("Erro ao consultar a IA. Verifique sua conexao.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <motion.section
+      className="stack"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      {toast ? <div className="toast error">{toast}</div> : null}
+
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Chat inteligente</span>
+          <h2>Assistente com dados do sistema</h2>
+          <p>
+            Pergunte sobre operacao, estoque e tendencias. A IA responde com
+            base no sistema e informacoes gerais de frutas e legumes.
+          </p>
+        </div>
+      </div>
+
+      <div className="card chat-shell">
+        <div className="chat-history">
+          {messages.length === 0 ? (
+            <p className="muted">Nenhuma pergunta ainda. Comece agora.</p>
+          ) : (
+            messages.map((message) => (
+              <div
+                key={message.id}
+                className={`chat-message ${message.role}`}
+              >
+                <span>{message.content}</span>
+              </div>
+            ))
+          )}
+          {loading ? (
+            <div className="chat-message assistant loading">
+              <Loader2 size={16} className="spin" />
+              <span>Respondendo...</span>
+            </div>
+          ) : null}
+        </div>
+
+        <form className="chat-input" onSubmit={handleSend}>
+          <textarea
+            rows={2}
+            placeholder="Digite sua pergunta..."
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+          />
+          <button
+            className="action-button primary"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? <Loader2 size={16} className="spin" /> : null}
+            Enviar
+          </button>
+        </form>
+
+        {error ? <div className="feedback error">{error}</div> : null}
+      </div>
+    </motion.section>
+  );
+}
+
 function ContentArea() {
   const { activeView, user } = useApp();
   const effectiveView =
@@ -2248,6 +2623,10 @@ function ContentArea() {
       ) : null}
       {effectiveView === "users" ? <UsersSection key="users" /> : null}
       {effectiveView === "reports" ? <ReportsSection key="reports" /> : null}
+      {effectiveView === "ai-analysis" ? (
+        <AIAnalysisSection key="ai-analysis" />
+      ) : null}
+      {effectiveView === "ai-chat" ? <AIChatSection key="ai-chat" /> : null}
     </AnimatePresence>
   );
 }
