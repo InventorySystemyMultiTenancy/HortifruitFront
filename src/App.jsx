@@ -50,8 +50,6 @@ const sidebarItems = [
   { key: "financial", label: "Financeiro", icon: BadgeDollarSign },
   { key: "users", label: "Usuários", icon: Users },
   { key: "reports", label: "Relatórios", icon: BarChart3 },
-  { key: "ai-analysis", label: "Analise com IA", icon: Sparkles },
-  { key: "ai-chat", label: "Chat inteligente", icon: MessageSquare },
 ];
 
 function formatQuantity(value) {
